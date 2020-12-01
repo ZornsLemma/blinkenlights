@@ -26,6 +26,8 @@ endmacro
 
 .forever_loop
 
+    sei \ TODO: EXPERIMENTAL
+
     \ Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta dec_count_x+2:sta sta_count_x+2
     lda #hi(period_table):sta lda_period_x+2
@@ -37,15 +39,19 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #5:sta led_group_count
+    lda #1:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
+    \ TODO: This messes things up, I *guess* because I'm not always completing in less than
+    \ a frame and therefore it causes some "frames" to actually take two frames, or similar.
+if TRUE 
     \ Wait for VSYNC.
     lda #sys_int_vsync
     sta sys_via_ifr
 .vsync_loop
     bit sys_via_ifr
     beq vsync_loop
+endif
 
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic).
 .led_loop
@@ -115,8 +121,7 @@ endmacro
     inc lda_state_x+2:inc sta_state_x+2
     inc lda_address_low_x_1+2:inc lda_address_low_x_2+2
     inc lda_address_high_x_1+2:inc lda_address_high_x_2+2
-    dec led_group_count
-    bpl led_loop
+    dec led_group_count:bne led_loop
     jmp forever_loop
 
 .led_pattern
@@ -134,7 +139,7 @@ endmacro
     align &100
 .count_table
     for i, 0, led_count-1
-        equb 0
+        equb 1
     next
 
     align &100
@@ -160,7 +165,6 @@ endmacro
 
     align &100
 .address_high_table
-    align &100
     for i, 0, led_count-1
         equb hi(&5800 + i*8 + 1)
     next
