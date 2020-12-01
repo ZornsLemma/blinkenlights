@@ -110,6 +110,9 @@
     sta sta_led_address_y+1
     lda $ffff,x \ patched
     sta sta_led_address_y+2
+    \ TODO: Since the top and bottom lines of the LED are always zero in on and off states,
+    \ we can actually make sure the screen address in table starts one line down from top
+    \ of character cell and do ldy #5 here; that trims 22 cycles off the following loop.
     ldy #7
     \ TIME: Following loop is 8*(4+5+2)+7*3+2=111 cycles
 .led_line_loop
