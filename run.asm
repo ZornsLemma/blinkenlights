@@ -82,4 +82,62 @@
 
 
 
+
+    \ TODO: Need to initialise all the self-modifying addresses before entering loop
+    ldx #0
+    \ TODO: Need to break out of led_loop after doing all LEDs
+    \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic).
+.led_loop
+    \ Decrement this LED's count and do nothing else if it's not yet zero.
+.dec_count_x
+    dec $ffff,x \ patched
+    beq toggle_led
+    inx:bne led_loop
+    beq next_led_group \ always branch
+    \ TIME: LED toggle is: 4+5+7+3+2+4+4+4+4+2+111+2+3=155 cycles ignoring the 1-in-8 cost of reset_toggle_byte and the relatively rare next_led_group case
+    \ This LED's count has hit zero; reset it.
+.lda_initial_count_x
+    lda $ffff,x \ patched
+.sta_count_x
+    sta $ffff,x \ patched
+    \ Toggle the LED's state SFTODO IN TABLE? ON SCREEN? DO WE ONLY HAVE SCREEN?
+    asl $ffff,x \ patched
+    beq reset_toggle_byte \ reset to %01010101 if 0
+.reset_toggle_byte_done
+    bcc turn_led_off
+    \ Patch the screen update loop to use the right address.
+    lda $ffff,x \ patched
+    sta sta_led_address_y+1
+    lda $ffff,x \ patched
+    sta sta_led_address_y+2
+    ldy #7
+    \ TIME: Following loop is 8*(4+5+2)+7*3+2=111 cycles
+.led_line_loop
+    lda led_pattern,y
+.sta_led_address_y
+    sta $ffff,y \ patched
+    dey:bpl led_line_loop
+    \ Move on to the next LED.
+    inx:bne led_loop
+    beq next_led_group \ always branch
+.led_off
+    \ TODO!
+.led_done
+    \ Move on to the next LED.
+    inx:bne led_loop
+.next_led_group
+    inc dec_count_x+2
+    inc lda_initial_count_x+2
+    inc sta_count_x+2
+    \ TODO: MORE
+    jmp led_loop
+
+.reset_toggle_byte
+    txa:tay
+    lda #%01010101 \ note LSB is 1, so we don't reset this early
+    sta (asl_state_x+1),y \ TODO: only works if code is in zero page!
+    bne reset_toggle_byte_done
+
+
+
 \ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
