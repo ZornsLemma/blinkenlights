@@ -45,15 +45,17 @@ endmacro
     \ TODO: This messes things up, I *guess* because I'm not always completing in less than
     \ a frame and therefore it causes some "frames" to actually take two frames, or similar.
 if TRUE 
+    \lda #1 eor 7:sta &fe21 \ TODO TEMP
     \ Wait for VSYNC.
     lda #sys_int_vsync
     sta sys_via_ifr
 .vsync_loop
     bit sys_via_ifr
     beq vsync_loop
+    \lda #0 eor 7:sta &fe21 \ TODO TEMP
 endif
 
-    \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic).
+    \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
 
     \ Decrement this LED's count and do nothing else if it's not yet zero.
@@ -64,7 +66,7 @@ endif
 
     \ Toggle this LED.
 .toggle_led
-    \ TIME: LED toggle is: 4+5+7+3+2+4+4+4+4+2+111+2+3=155 cycles ignoring the 1-in-8 cost of reset_toggle_byte and the relatively rare advance_to_next_led_group case
+    \ TIME: LED toggle is: 4+5+4+2+5+2+4+4+4+4+2+89+2+3=134 cycles, so ignoring any other overhead I can toggle 298 LEDs per frame
     \ This LED's count has hit zero; reset it.
 .lda_period_x
     lda $ff00,x \ patched
@@ -88,7 +90,7 @@ endif
     lda $ff00,x \ patched
     sta sta_led_address_y_1+2
     ldy #5
-    \ TIME: Following loop is 8*(4+5+2)+7*3+2=111 cycles - no, it's now 6*...
+    \ TIME: Following loop is 6*(4+5+2)+7*3+2=89 cycles
 .led_line_loop1
     lda led_pattern,y
 .sta_led_address_y_1
@@ -145,7 +147,10 @@ endif
     align &100
 .period_table
     for i, 0, led_count-1
-        equb 20+rnd(9)
+        \ TODO: original try: equb 20+rnd(9)
+        equb 23+rnd(5)
+        \ equb 40+rnd(18) \ TODO EXPERIMENTAL - MAYBE NOT TOO BAD
+        \ equb 20+rnd(18) \ TODO EXPERIMENTAL
     next
 
     align &100
@@ -160,13 +165,13 @@ endif
     align &100
 .address_low_table
     for i, 0, led_count-1
-        equb lo(&5800 + i*8 + 1)
+        equb lo(&5800 + i*8 +20*40*8 + 1)
     next
 
     align &100
 .address_high_table
     for i, 0, led_count-1
-        equb hi(&5800 + i*8 + 1)
+        equb hi(&5800 + i*8 +20*40*8 + 1)
     next
 
 .end
@@ -175,3 +180,5 @@ endif
     save "BLINKEN", start, end
 
 \ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
+
+\ TODO: I should keep on with the mode 4 version, but I should also do a mode 7 version using separated graphics - that should be super smooth as it's character based and I can easily toggle individual sixels=LEDs
