@@ -100,8 +100,8 @@ endmacro
     lda $ff00,x \ patched
     sta sta_led_address_y_2+2
     ldy #5
+    lda #0
 .led_line_loop2
-    lda led_pattern,y
 .sta_led_address_y_2
     sta $ffff,y \ patched
     dey:bpl led_line_loop2
