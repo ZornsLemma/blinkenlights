@@ -40,6 +40,14 @@
 
 
 
+\ "No toggle" case is 23 cycles most of the time
+\ On average 143 LEDs will toggle per tick, leaving 1137 no toggles
+\ That leaves us 13849 cycles (a bit less really) per frame to do the toggles, or
+\ 96 cycles per LED. The code below is looking at very very approximately 140 cycles per LED,
+\ so we're not going to hit 50Hz on a full screen at this rate. Of course, half the toggles
+\ will be to off and that code is potentially a little bit faster, but still probably not
+\ enough.
+
 .outer_loop \ TODO: rename
     \ TODO: We need to break out of this outer_loop when we've done all the LEDs
     lda (table),y
@@ -71,3 +79,7 @@
     inc table3+1
     inc table4+1
     jmp outer_loop \ SFTODO: could prob bne=always
+
+
+
+\ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
