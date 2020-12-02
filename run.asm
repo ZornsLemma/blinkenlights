@@ -60,7 +60,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #1:sta led_group_count \ TODO: SHOULD BE 5
+    lda #3:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -71,7 +71,10 @@ endmacro
 .vsync_wait_loop
     lda vsync_count
     bmi vsync_wait_loop
+    jmp SFTODOHACK
 .missed_vsync
+    lda #1 eor 7:sta &fe21
+.SFTODOHACK
 
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
@@ -159,7 +162,7 @@ endmacro
     lda &fe6d:and #&20:beq do_rti
     inc vsync_count
     lda &fe68
-    lda #4 eor 7:sta &fe21
+    \lda #4 eor 7:sta &fe21
     jmp do_rti
 }
      
@@ -207,7 +210,8 @@ endif
         \ equb 22+rnd(5)
         \equb 22+rnd(9) \ maybe not too bad
         \ equb 22+rnd(7) \ maybe not too bad
-        equb 30+rnd(9)
+        \ equb 30+rnd(9)
+        equb 40+rnd(18)
         \ equb 20+rnd(18) \ TODO EXPERIMENTAL
     next
 
@@ -219,17 +223,18 @@ endif
 
     \ We do +1 in the address calculations because the LED only occupies lines 1-6
     \ of the character cell, not the full lines 0-7.
+    HACKTODO=0
 
     align &100
 .address_low_table
     for i, 0, led_count-1
-        equb lo(&5800 + i*8 +20*40*8 + 1)
+        equb lo(&5800 + i*8 +HACKTODO*40*8 + 1)
     next
 
     align &100
 .address_high_table
     for i, 0, led_count-1
-        equb hi(&5800 + i*8 +20*40*8 + 1)
+        equb hi(&5800 + i*8 +HACKTODO*40*8 + 1)
     next
 
 .end
