@@ -45,14 +45,14 @@ endmacro
     \ TODO: This messes things up, I *guess* because I'm not always completing in less than
     \ a frame and therefore it causes some "frames" to actually take two frames, or similar.
 if TRUE 
-    \lda #1 eor 7:sta &fe21 \ TODO TEMP
+    \lda #0 eor 7:sta &fe21 \ TODO TEMP
     \ Wait for VSYNC.
     lda #sys_int_vsync
     sta sys_via_ifr
 .vsync_loop
     bit sys_via_ifr
     beq vsync_loop
-    \lda #0 eor 7:sta &fe21 \ TODO TEMP
+    \lda #1 eor 7:sta &fe21 \ TODO TEMP
 endif
 
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
@@ -127,12 +127,22 @@ endif
     jmp forever_loop
 
 .led_pattern
+if FALSE
     equb %00111100
     equb %01111110
     equb %01111110
     equb %01111110
     equb %01111110
     equb %00111100
+else
+    \ TODO: If I stick with this, I can avoid plotting the all 0s rows
+    equb %00000000
+    equb %00011000
+    equb %00111100
+    equb %00111100
+    equb %00011000
+    equb %00000000
+endif
 
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
     \ random set of frequencies each time.
@@ -148,8 +158,18 @@ endif
 .period_table
     for i, 0, led_count-1
         \ TODO: original try: equb 20+rnd(9)
-        equb 23+rnd(5)
+        \ equb 23+rnd(5)
+        \ equb 10+rnd(6)
+        \ equb 12+rnd(4)
+        \ equb 20+rnd(6) \ maybe not too bad
         \ equb 40+rnd(18) \ TODO EXPERIMENTAL - MAYBE NOT TOO BAD
+        \ equb 40+rnd(7)
+        \ equb 45+rnd(9)
+        \ equb 47+rnd(5)
+        \ equb 22+rnd(5)
+        \equb 22+rnd(9) \ maybe not too bad
+        \ equb 22+rnd(7) \ maybe not too bad
+        equb 30+rnd(9)
         \ equb 20+rnd(18) \ TODO EXPERIMENTAL
     next
 
