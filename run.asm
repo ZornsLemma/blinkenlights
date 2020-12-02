@@ -12,7 +12,7 @@
 
     led_count = 40*32
     ticks_per_frame = 8
-    show_missed_vsync = TRUE
+    show_missed_vsync = FALSE
     big_leds = TRUE
     if big_leds
         led_start_line = 1
@@ -134,22 +134,28 @@ endif
     beq turn_led_off
 
     \ Turn this LED on.
+    \ We could save a few cycles by only loading the accumulator once with the "top/bottom"
+    \ pixel pattern and saving it in the top and bottom rows at that point, but I think the
+    \ occasional tearing artefacts are less noticeable if we update in strictly increasing
+    \ order.
 if big_leds
     lda #%00111100
     ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #5:sta (screen_ptr),y
     lda #%01111110
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    lda #%00111100
+    iny:sta (screen_ptr),y
 else
     lda #%00011000
     ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #3:sta (screen_ptr),y
     lda #%00111100
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    iny:sta (screen_ptr),y
+    lda #%00011000
+    iny:sta (screen_ptr),y
 endif
     advance_to_next_led
 
