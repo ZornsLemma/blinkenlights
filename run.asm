@@ -79,6 +79,7 @@ endmacro
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
 
+    \ TODO: Can I give LEDs a higher resolution blink period? Obviously it has to be "rounded" to the 50Hz display, but this might result in an LED flashing "on average" at (say) 24.5Hz, giving more variety to the display. One easyish way to do this might be to have two different initial counts, one for after toggling on and one for toggling off, then (say) one could be 24 and the other could be 25 to give a 24.5Hz flash. (I have got the Hz figures totally wrong there, but it gives the idea anyway.)
     \ Decrement this LED's count and do nothing else if it's not yet zero.
 .dec_count_x
     dec $ff00,x \ patched
