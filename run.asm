@@ -61,7 +61,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #2:sta led_group_count \ TODO: SHOULD BE 5
+    lda #4:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -82,6 +82,7 @@ endmacro
 
     \ TODO: Can I give LEDs a higher resolution blink period? Obviously it has to be "rounded" to the 50Hz display, but this might result in an LED flashing "on average" at (say) 24.5Hz, giving more variety to the display. One easyish way to do this might be to have two different initial counts, one for after toggling on and one for toggling off, then (say) one could be 24 and the other could be 25 to give a 24.5Hz flash. (I have got the Hz figures totally wrong there, but it gives the idea anyway.)
     \ Decrement this LED's count and do nothing else if it's not yet zero.
+    \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda $ff00,x \ patched
     sec:sbc #ticks_per_frame
