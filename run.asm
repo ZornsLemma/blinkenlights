@@ -2,6 +2,8 @@
     guard &90
 .led_group_count
     equb 0
+.vsync_count
+    equb 0
 
     org &2000
     guard &5800
@@ -10,6 +12,7 @@
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
+    irq1v = &204
 
 
 macro advance_to_next_led_fall_through
@@ -23,10 +26,28 @@ macro advance_to_next_led
 endmacro
 
 .start
+    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
+    scanline_to_interrupt_at = 128
+    vsync_position = 35
+    total_rows = 39
+    us_per_scanline = 64
+    us_per_row = 8*us_per_scanline
+    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    
+    sei
+    lda #&82
+    sta &fe4e
+    lda #&a0
+    sta &fe6e
+    lda #lo(irq_handler):sta irq1v
+    lda #hi(irq_handler):sta irq1v+1
+    lda #0:sta vsync_count
+    cli
+    jmp forever_loop
 
+    \ TODO: Pay proper attention to alignment so the branches in the important code never take longer than necessary - this is a crude hack which will probably do the job but I haven't checked.
+    align &100
 .forever_loop
-
-    sei \ TODO: EXPERIMENTAL
 
     \ Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta dec_count_x+2:sta sta_count_x+2
@@ -42,18 +63,15 @@ endmacro
     lda #1:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
-    \ TODO: This messes things up, I *guess* because I'm not always completing in less than
-    \ a frame and therefore it causes some "frames" to actually take two frames, or similar.
-if TRUE 
-    \lda #0 eor 7:sta &fe21 \ TODO TEMP
-    \ Wait for VSYNC.
-    lda #sys_int_vsync
-    sta sys_via_ifr
-.vsync_loop
-    bit sys_via_ifr
-    beq vsync_loop
-    \lda #1 eor 7:sta &fe21 \ TODO TEMP
-endif
+    \ The idea here is that if we took less than 1/50th second to process the last update we
+    \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
+    \ screen), but if we took longer we just keep going until we catch up.
+    dec vsync_count
+    bpl missed_vsync
+.vsync_wait_loop
+    lda vsync_count
+    bmi vsync_wait_loop
+.missed_vsync
 
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
@@ -126,8 +144,28 @@ endif
     dec led_group_count:bne led_loop
     jmp forever_loop
 
+.irq_handler
+{
+    lda &fc:pha
+    lda &fe4d:and #&02:beq try_timer2
+    \ Handle VSYNC interrupt.
+    lda #0 eor 7:sta &fe21
+    lda #lo(timer2_value_in_us):sta &fe68
+    lda #hi(timer2_value_in_us):sta &fe69
+.do_rti
+    pla:sta &fc
+    jmp &e5ff \ rti \ TODO!?
+.try_timer2
+    lda &fe6d:and #&20:beq do_rti
+    inc vsync_count
+    lda &fe68
+    lda #4 eor 7:sta &fe21
+    jmp do_rti
+}
+     
+
 .led_pattern
-if FALSE
+if TRUE
     equb %00111100
     equb %01111110
     equb %01111110
