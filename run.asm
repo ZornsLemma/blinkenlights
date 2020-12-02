@@ -9,7 +9,7 @@
     guard &5800
 
     led_count = 40*32
-    ticks_per_frame = 4
+    ticks_per_frame = 8
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -51,7 +51,7 @@ endmacro
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
-    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2
+    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
     lda #hi(address_low_table):sta lda_address_low_x_1+2:sta lda_address_low_x_2+2
@@ -85,9 +85,18 @@ endmacro
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda $ff00,x \ patched
-    sec:sbc #ticks_per_frame
+    sec
+    \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
+    \ the count. This is an experiment.
+    bmi not_going_to_toggle
+    sbc #ticks_per_frame
     bmi toggle_led
 .sta_count_x_1
+    sta $ff00,x \ patched
+    advance_to_next_led
+.not_going_to_toggle
+    sbc #ticks_per_frame
+.sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
     sta $ff00,x \ patched
     advance_to_next_led
 
@@ -146,12 +155,14 @@ endmacro
 .advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
-    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_2+2
+    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
     inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
     inc lda_address_low_x_1+2:inc lda_address_low_x_2+2
     inc lda_address_high_x_1+2:inc lda_address_high_x_2+2
-    dec led_group_count:bne led_loop
+    dec led_group_count:beq forever_loop_indirect
+    jmp led_loop
+.forever_loop_indirect
     jmp forever_loop
 
 .irq_handler
@@ -203,7 +214,7 @@ endif
     next
 
 macro pequb x
-    assert x >= 0 and x <= 127
+    assert x >= 0 and x <= 255
     equb x
 endmacro
 
@@ -230,7 +241,7 @@ endmacro
         \ equb 30+rnd(3)+rnd(3)
         \ equb 50+rnd(5)+rnd(5)
         \ equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
-        pequb 22*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3, 4)
+        pequb 22*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3, 4, 8)
     next
 
     align &100
