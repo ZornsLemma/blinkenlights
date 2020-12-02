@@ -38,19 +38,14 @@ macro advance_to_next_led
 endmacro
 
 .start
-    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = 128
-    vsync_position = 35
-    total_rows = 39
-    us_per_scanline = 64
-    us_per_row = 8*us_per_scanline
-    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    
+    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/vsync-example.asm
     sei
     lda #&82
     sta &fe4e
     lda #&a0
     sta &fe6e
+    lda irq1v:sta jmp_old_irq_handler+1
+    lda irq1v+1:sta jmp_old_irq_handler+2
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta vsync_count
@@ -188,24 +183,16 @@ endif
 .irq_handler
 {
     lda &fc:pha
-    \ TODO: Since I only using interrupts to count vsyncs, I don't actually need the timer2
-    \ stuff, so that's adding a bit of extra complexity and wasting a few CPU cycles.
-    lda &fe4d:and #&02:beq try_timer2
+    lda &fe4d:and #&02:beq return_to_os
     \ Handle VSYNC interrupt.
+    inc vsync_count
 if show_missed_vsync
     lda #0 eor 7:sta &fe21
 endif
-    lda #lo(timer2_value_in_us):sta &fe68
-    lda #hi(timer2_value_in_us):sta &fe69
-.do_rti
+.return_to_os
     pla:sta &fc
-    jmp &e5ff \ rti \ TODO!?
-.try_timer2
-    lda &fe6d:and #&20:beq do_rti
-    inc vsync_count
-    lda &fe68
-    \lda #4 eor 7:sta &fe21
-    jmp do_rti
+.^jmp_old_irq_handler
+    jmp &ffff \ patched
 }
      
 
