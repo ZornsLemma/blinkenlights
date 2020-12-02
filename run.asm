@@ -12,6 +12,14 @@
 
     led_count = 40*32
     ticks_per_frame = 8
+    big_leds = FALSE
+    if big_leds
+        led_start_line = 1
+        led_max_line = 5
+    else
+        led_start_line = 2
+        led_max_line = 3
+    endif
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -127,23 +135,29 @@ endmacro
     beq turn_led_off
 
     \ Turn this LED on.
-    for y, 0, 5
-        \ TODO: Now we are unrolling this loop, we can use lda # instead - and we can even optimise by doing the "similar" rows first, to avoid unnecesary lda # - note that ldy #n is as far as iny, though of course slightly larger
-        lda led_pattern+y
-        \ TODO: Scope for using CMOS sta (screen_ptr) here if I really wanted; we'd avoid doing ldy #0 and on y=1 pass do ldy #1 instead of iny. - implementation might be slightly cleaner if we did y from 5 down to 0, then the special case would be a bit simpler (I think)
-        if y == 0
-            ldy #0
-        else
-            iny
-        endif
-        sta (screen_ptr),y
-    next
+if big_leds
+    lda #%00111100
+    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+    ldy #5:sta (screen_ptr),y
+    lda #%01111110
+    dey:sta (screen_ptr),y
+    dey:sta (screen_ptr),y
+    dey:sta (screen_ptr),y
+    dey:sta (screen_ptr),y
+else
+    lda #%00011000
+    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+    ldy #3:sta (screen_ptr),y
+    lda #%00111100
+    dey:sta (screen_ptr),y
+    dey:sta (screen_ptr),y
+endif
     advance_to_next_led
 
 .turn_led_off
     \ Turn this LED off.
     lda #0
-    for y, 0, 5
+    for y, 0, led_max_line
         \ TODO: Scope for using CMOS
         if y == 0
             ldy #0
@@ -189,6 +203,7 @@ endmacro
 }
      
 
+if FALSE \ TODO: DELETE
 .led_pattern
 if FALSE
     equb %00111100
@@ -205,6 +220,7 @@ else
     equb %00111100
     equb %00011000
     equb %00000000
+endif
 endif
 
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
@@ -254,20 +270,18 @@ endmacro
         equb 0
     next
 
-    \ We do +1 in the address calculations because the LED only occupies lines 1-6
-    \ of the character cell, not the full lines 0-7.
     HACKTODO=0
 
     align &100
 .address_low_table
     for i, 0, led_count-1
-        equb lo(&5800 + i*8 +HACKTODO*40*8 + 1)
+        equb lo(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
     next
 
     align &100
 .address_high_table
     for i, 0, led_count-1
-        equb hi(&5800 + i*8 +HACKTODO*40*8 + 1)
+        equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
     next
 
 .end
