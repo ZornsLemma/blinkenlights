@@ -9,6 +9,7 @@
     guard &5800
 
     led_count = 40*32
+    ticks_per_frame = 3
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -50,8 +51,8 @@ endmacro
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
-    lda #hi(count_table):sta dec_count_x+2:sta sta_count_x+2
-    lda #hi(period_table):sta lda_period_x+2
+    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2
+    lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
     lda #hi(address_low_table):sta lda_address_low_x_1+2:sta lda_address_low_x_2+2
     lda #hi(address_high_table):sta lda_address_high_x_1+2:sta lda_address_high_x_2+2
@@ -81,18 +82,22 @@ endmacro
 
     \ TODO: Can I give LEDs a higher resolution blink period? Obviously it has to be "rounded" to the 50Hz display, but this might result in an LED flashing "on average" at (say) 24.5Hz, giving more variety to the display. One easyish way to do this might be to have two different initial counts, one for after toggling on and one for toggling off, then (say) one could be 24 and the other could be 25 to give a 24.5Hz flash. (I have got the Hz figures totally wrong there, but it gives the idea anyway.)
     \ Decrement this LED's count and do nothing else if it's not yet zero.
-.dec_count_x
-    dec $ff00,x \ patched
-    beq toggle_led
+.lda_count_x
+    lda $ff00,x \ patched
+    sec:sbc #ticks_per_frame
+    bmi toggle_led
+.sta_count_x_1
+    sta $ff00,x \ patched
     advance_to_next_led
 
     \ Toggle this LED.
 .toggle_led
     \ TIME: LED toggle is: 4+5+4+2+5+2+4+4+4+4+2+89+2+3=134 cycles, so ignoring any other overhead I can toggle 298 LEDs per frame
-    \ This LED's count has hit zero; reset it.
-.lda_period_x
-    lda $ff00,x \ patched
-.sta_count_x
+    \ This LED's count has gone negative; add the period.
+    clc
+.adc_period_x
+    adc $ff00,x \ patched
+.sta_count_x_2
     sta $ff00,x \ patched
     \ Toggle the LED's state.
 .lda_state_x
@@ -140,8 +145,8 @@ endmacro
 .advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
-    inc dec_count_x+2:inc sta_count_x+2
-    inc lda_period_x+2
+    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_2+2
+    inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
     inc lda_address_low_x_1+2:inc lda_address_low_x_2+2
     inc lda_address_high_x_1+2:inc lda_address_high_x_2+2
@@ -218,7 +223,7 @@ endif
         \ equb 30+rnd(5)+rnd(5)
         \ equb 30+rnd(3)+rnd(3)
         \ equb 50+rnd(5)+rnd(5)
-        equb 40+rnd(3)+rnd(3)
+        equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
     next
 
     align &100
