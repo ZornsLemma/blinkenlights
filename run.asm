@@ -12,7 +12,8 @@
 
     led_count = 40*32
     ticks_per_frame = 8
-    big_leds = FALSE
+    show_missed_vsync = TRUE
+    big_leds = TRUE
     if big_leds
         led_start_line = 1
         led_max_line = 5
@@ -71,7 +72,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #4:sta led_group_count \ TODO: SHOULD BE 5
+    lda #5:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -82,15 +83,18 @@ endmacro
 .vsync_wait_loop
     lda vsync_count
     bmi vsync_wait_loop
+if show_missed_vsync
     jmp SFTODOHACK
+endif
 .missed_vsync
+if show_missed_vsync
     lda #1 eor 7:sta &fe21
 .SFTODOHACK
+endif
 
     \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
 
-    \ TODO: Can I give LEDs a higher resolution blink period? Obviously it has to be "rounded" to the 50Hz display, but this might result in an LED flashing "on average" at (say) 24.5Hz, giving more variety to the display. One easyish way to do this might be to have two different initial counts, one for after toggling on and one for toggling off, then (say) one could be 24 and the other could be 25 to give a 24.5Hz flash. (I have got the Hz figures totally wrong there, but it gives the idea anyway.)
     \ Decrement this LED's count and do nothing else if it's not yet zero.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
@@ -160,7 +164,7 @@ endif
     for y, 0, led_max_line
         \ TODO: Scope for using CMOS
         if y == 0
-            ldy #0
+            ldy #0 \ TODO: tay would save one byte, but no faster and more obscure
         else
             iny
         endif
@@ -188,7 +192,9 @@ endif
     \ stuff, so that's adding a bit of extra complexity and wasting a few CPU cycles.
     lda &fe4d:and #&02:beq try_timer2
     \ Handle VSYNC interrupt.
+if show_missed_vsync
     lda #0 eor 7:sta &fe21
+endif
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
 .do_rti
