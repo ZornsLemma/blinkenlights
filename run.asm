@@ -12,7 +12,7 @@
 
     led_count = 40*32
     ticks_per_frame = 8
-    show_missed_vsync = TRUE
+    show_missed_vsync = FALSE
     big_leds = TRUE
     if big_leds
         led_start_line = 1
@@ -39,18 +39,21 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = 128
+    \ We want our timer to fire right at the start of the vertical blanking period.
+    scanline_to_interrupt_at = 256
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    
+   
     sei
     lda #&82
     sta &fe4e
     lda #&a0
     sta &fe6e
+    lda irq1v:sta jmp_old_irq_handler+1
+    lda irq1v+1:sta jmp_old_irq_handler+2
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta vsync_count
@@ -188,8 +191,6 @@ endif
 .irq_handler
 {
     lda &fc:pha
-    \ TODO: Since I only using interrupts to count vsyncs, I don't actually need the timer2
-    \ stuff, so that's adding a bit of extra complexity and wasting a few CPU cycles.
     lda &fe4d:and #&02:beq try_timer2
     \ Handle VSYNC interrupt.
 if show_missed_vsync
@@ -197,15 +198,16 @@ if show_missed_vsync
 endif
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
-.do_rti
+.return_to_os
     pla:sta &fc
-    jmp &e5ff \ rti \ TODO!?
+.^jmp_old_irq_handler
+    jmp &ffff \ patched
 .try_timer2
-    lda &fe6d:and #&20:beq do_rti
+    lda &fe6d:and #&20:beq return_to_os
     inc vsync_count
     lda &fe68
     \lda #4 eor 7:sta &fe21
-    jmp do_rti
+    jmp return_to_os
 }
      
 
