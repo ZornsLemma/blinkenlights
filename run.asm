@@ -61,7 +61,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #4:sta led_group_count \ TODO: SHOULD BE 5
+    lda #3:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -168,6 +168,8 @@ endmacro
 .irq_handler
 {
     lda &fc:pha
+    \ TODO: Since I only using interrupts to count vsyncs, I don't actually need the timer2
+    \ stuff, so that's adding a bit of extra complexity and wasting a few CPU cycles.
     lda &fe4d:and #&02:beq try_timer2
     \ Handle VSYNC interrupt.
     lda #0 eor 7:sta &fe21
@@ -186,7 +188,7 @@ endmacro
      
 
 .led_pattern
-if TRUE
+if FALSE
     equb %00111100
     equb %01111110
     equb %01111110
