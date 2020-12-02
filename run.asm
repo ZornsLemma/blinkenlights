@@ -60,7 +60,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #3:sta led_group_count \ TODO: SHOULD BE 5
+    lda #2:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -208,11 +208,16 @@ endif
         \ equb 45+rnd(9)
         \ equb 47+rnd(5)
         \ equb 22+rnd(5)
-        \equb 22+rnd(9) \ maybe not too bad
+        \ equb 22+rnd(9) \ maybe not too bad
         \ equb 22+rnd(7) \ maybe not too bad
         \ equb 30+rnd(9)
-        equb 40+rnd(18)
+        \ equb 40+rnd(18)
         \ equb 20+rnd(18) \ TODO EXPERIMENTAL
+        \ equb 46+rnd(4)+rnd(4)
+        \ equb 30+rnd(5)+rnd(5)
+        \ equb 30+rnd(3)+rnd(3)
+        \ equb 50+rnd(5)+rnd(5)
+        equb 40+rnd(3)+rnd(3)
     next
 
     align &100
