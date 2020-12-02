@@ -4,6 +4,8 @@
     equb 0
 .vsync_count
     equb 0
+.screen_ptr
+    equw 0
 
     org &2000
     guard &5800
@@ -54,8 +56,8 @@ endmacro
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
-    lda #hi(address_low_table):sta lda_address_low_x_1+2:sta lda_address_low_x_2+2
-    lda #hi(address_high_table):sta lda_address_high_x_1+2:sta lda_address_high_x_2+2
+    lda #hi(address_low_table):sta lda_address_low_x_1+2
+    lda #hi(address_high_table):sta lda_address_high_x_1+2
 
     \ Reset X and led_group_count.
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
@@ -110,6 +112,12 @@ endmacro
 .sta_count_x_2
     sta $ff00,x \ patched
     \ Toggle the LED's state.
+.lda_address_low_x_1 \ TODO: _1 suffix now redundant
+    lda $ff00,x \ patched
+    sta screen_ptr
+.lda_address_high_x_1 \ TODO: _1 suffix now redundant
+    lda $ff00,x \ patched
+    sta screen_ptr+1
 .lda_state_x
     lda $ff00,x \ patched
     eor #255
@@ -119,37 +127,31 @@ endmacro
     beq turn_led_off
 
     \ Turn this LED on.
-    \ Patch the screen update loop to use the right address.
-.lda_address_low_x_1
-    lda $ff00,x \ patched
-    sta sta_led_address_y_1+1
-.lda_address_high_x_1
-    lda $ff00,x \ patched
-    sta sta_led_address_y_1+2
-    ldy #5
-    \ TIME: Following loop is 6*(4+5+2)+7*3+2=89 cycles
-.led_line_loop1
-    lda led_pattern,y
-.sta_led_address_y_1
-    sta $ffff,y \ patched
-    dey:bpl led_line_loop1
+    for y, 0, 5
+        \ TODO: Now we are unrolling this loop, we can use lda # instead - and we can even optimise by doing the "similar" rows first, to avoid unnecesary lda # - note that ldy #n is as far as iny, though of course slightly larger
+        lda led_pattern+y
+        \ TODO: Scope for using CMOS sta (screen_ptr) here if I really wanted; we'd avoid doing ldy #0 and on y=1 pass do ldy #1 instead of iny. - implementation might be slightly cleaner if we did y from 5 down to 0, then the special case would be a bit simpler (I think)
+        if y == 0
+            ldy #0
+        else
+            iny
+        endif
+        sta (screen_ptr),y
+    next
     advance_to_next_led
 
 .turn_led_off
     \ Turn this LED off.
-    \ Patch the screen update loop to use the right address.
-.lda_address_low_x_2
-    lda $ff00,x \ patched
-    sta sta_led_address_y_2+1
-.lda_address_high_x_2
-    lda $ff00,x \ patched
-    sta sta_led_address_y_2+2
-    ldy #5
     lda #0
-.led_line_loop2
-.sta_led_address_y_2
-    sta $ffff,y \ patched
-    dey:bpl led_line_loop2
+    for y, 0, 5
+        \ TODO: Scope for using CMOS
+        if y == 0
+            ldy #0
+        else
+            iny
+        endif
+        sta (screen_ptr),y
+    next
     advance_to_next_led_fall_through
 
 .advance_to_next_led_group
@@ -158,8 +160,8 @@ endmacro
     inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
     inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
-    inc lda_address_low_x_1+2:inc lda_address_low_x_2+2
-    inc lda_address_high_x_1+2:inc lda_address_high_x_2+2
+    inc lda_address_low_x_1+2
+    inc lda_address_high_x_1+2
     dec led_group_count:beq forever_loop_indirect
     jmp led_loop
 .forever_loop_indirect
