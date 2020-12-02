@@ -9,7 +9,7 @@
     guard &5800
 
     led_count = 40*32
-    ticks_per_frame = 3
+    ticks_per_frame = 4
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -201,6 +201,11 @@ endif
         equb 1
     next
 
+macro pequb x
+    assert x >= 0 and x <= 127
+    equb x
+endmacro
+
     align &100
 .period_table
     for i, 0, led_count-1
@@ -224,7 +229,7 @@ endif
         \ equb 30+rnd(3)+rnd(3)
         \ equb 50+rnd(5)+rnd(5)
         \ equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
-        equb 23*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3)
+        pequb 22*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3, 4)
     next
 
     align &100
