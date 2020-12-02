@@ -223,7 +223,8 @@ endif
         \ equb 30+rnd(5)+rnd(5)
         \ equb 30+rnd(3)+rnd(3)
         \ equb 50+rnd(5)+rnd(5)
-        equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
+        \ equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
+        equb 23*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3)
     next
 
     align &100
