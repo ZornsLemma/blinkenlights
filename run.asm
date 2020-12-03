@@ -95,7 +95,6 @@ if show_missed_vsync
 .SFTODOHACK
 endif
 
-    \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
 .led_loop
 
     \ Decrement this LED's count and do nothing else if it's not yet zero.
@@ -119,7 +118,6 @@ endif
 
     \ Toggle this LED.
 .toggle_led
-    \ TIME: LED toggle is: 4+5+4+2+5+2+4+4+4+4+2+89+2+3=134 cycles, so ignoring any other overhead I can toggle 298 LEDs per frame
     \ This LED's count has gone negative; add the period.
     clc
 .adc_period_x
@@ -142,6 +140,7 @@ endif
     beq turn_led_off
 
     \ Turn this LED on.
+    \ TIME: This takes 2+2*(2+6)+2+4*(2+6)=52 cycles (for big LEDs)
 if big_leds
     lda #%00111100
     ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
@@ -163,6 +162,7 @@ endif
 
 .turn_led_off
     \ Turn this LED off.
+    \ TIME: This takes 2+6*(2+6)=50 cycles (for big LEDs)
     lda #0
     for y, 0, led_max_line
         \ TODO: Scope for using CMOS
