@@ -16,6 +16,8 @@
     led_count = 40*32
     ticks_per_frame = 8
     show_missed_vsync = FALSE
+    show_rows = FALSE
+    assert not(show_missed_vsync and show_rows)
     big_leds = TRUE
     if big_leds
         led_start_line = 1
@@ -81,12 +83,13 @@ endmacro
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
     lda #hi(address_low_table):sta lda_address_low_x_1+2
     lda #hi(address_high_table):sta lda_address_high_x_1+2
+    lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     \ Reset X and led_group_count.
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #5:sta led_group_count \ TODO: SHOULD BE 5
+    lda #4:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -142,6 +145,12 @@ endif
 .lda_address_high_x_1 \ TODO: _1 suffix now redundant
     lda $ff00,x \ patched
     sta screen_ptr+1
+    \ If the raster is currently on this row, wait for it to pass.
+.lda_inverse_row_x
+    lda $ff00,x \ patched
+.raster_loop
+    cmp SFTODOTHING
+    beq raster_loop
 .lda_state_x
     lda $ff00,x \ patched
     eor #255
@@ -194,6 +203,7 @@ endif
     inc lda_state_x+2:inc sta_state_x+2
     inc lda_address_low_x_1+2
     inc lda_address_high_x_1+2
+    inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
     jmp led_loop
 .forever_loop_indirect
@@ -204,13 +214,12 @@ endif
     lda &fc:pha
     lda &fe4d:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
-if show_missed_vsync
-    lda #0 eor 7:sta &fe21
-endif
-    lda #0 eor 7:sta &fe21
-    lda &fe41 \ SFTODO: clear this interrupt
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
+    lda &fe41 \ SFTODO: clear this interrupt
+if show_missed_vsync or show_rows
+    lda #0 eor 7:sta &fe21
+endif
     pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
 .return_to_os
     pla:sta &fc
@@ -222,7 +231,9 @@ endif
     and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
     lda &fe64 \ clear timer1 interrupt flag
     dec SFTODOTHING:bmi bottom_of_screen
+if show_rows
     lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
+endif
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
     lda user_via_interrupt_flag_register:and #&20:beq return_to_os_hack
@@ -230,16 +241,20 @@ endif
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
     lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
+if show_rows
     lda #4 eor 7:sta &fe21
+endif
     lda #31:sta SFTODOTHING
     pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
-    lda #5 eor 7:sta &fe21
     \lda #%01000000:sta user_via_interrupt_enable_register
     lda #&ff:sta &fe64:sta &fe65
     \lda &fe64 \ clear timer1 interrupt flag *again*!?
     \lda #0:sta &fe64:sta &fe65
     inc vsync_count
+if show_rows
+    lda #5 eor 7:sta &fe21
+endif
     pla:sta &fc:rti \ jmp return_to_os
 .return_to_os_hack
     pla:sta &fc:rti
@@ -318,7 +333,7 @@ endmacro
     align &100
 .inverse_row_table
     for i, 0, led_count - 1
-        equb 31 - (i % 40)
+        equb 31 - (i div 40)
     next
 
     align &100
