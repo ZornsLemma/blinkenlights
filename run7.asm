@@ -107,8 +107,10 @@ endif
 .led_loop_sec
     sec
 .led_loop
+if FALSE
 .SFTODOHANG99
     bcc SFTODOHANG99
+endif
     \ TIME: To hit 50fps consistently, I have 7.3 cycles per LED. Obviously that's not
     \ possible.
 
@@ -130,8 +132,8 @@ endif
     dey
     beq next_line
     lda SFTODOTABLE,y:bpl led_loop
-    inc screen_ptr:bne led_loop_sec
-    inc screen_ptr+1:jmp led_loop_sec
+    inc screen_ptr:bne led_loop
+    inc screen_ptr+1:jmp led_loop
 .next_line
     ldy #38*6
     clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop_sec
@@ -148,8 +150,10 @@ endif
 
     \ Toggle this LED.
 .toggle_led
+if FALSE
 .SFTODOHANG44
     bcs SFTODOHANG44
+endif
     \ This LED's count has gone negative; add the period.
     \ clc - we have arranged that carry is always clear here already
 .adc_period_x
