@@ -4,7 +4,7 @@
     equb 0
 .vsync_count
     equb 0
-.SFTODOTHING
+.SFTODOTHING \ SFTODO: RENAME inverse_raster_row OR SIMILAR
     equb 0
 .screen_ptr
     equw 0
@@ -89,7 +89,7 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #4:sta led_group_count \ TODO: SHOULD BE 5
+    lda #5:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
@@ -232,7 +232,8 @@ endif
     lda &fe64 \ clear timer1 interrupt flag
     dec SFTODOTHING:bmi bottom_of_screen
 if show_rows
-    lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
+    \lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
+    lda SFTODOTHING:and #3:eor #7:sta &fe21
 endif
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
