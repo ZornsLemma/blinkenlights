@@ -16,7 +16,7 @@
     led_count = 40*32
     ticks_per_frame = 8
     show_missed_vsync = FALSE
-    show_rows = FALSE
+    show_rows = TRUE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
     big_leds = TRUE
@@ -32,8 +32,12 @@
 
     ula_palette = &fe21
 
+    system_via_register_a = &fe41
     system_via_interrupt_flag_register = &fe4d
     system_via_interrupt_enable_register = &fe4e
+
+    user_via_timer_1_low_order_latch = &fe64
+    user_via_timer_1_high_order_counter = &fe65
     user_via_auxiliary_control_register = &fe6b
     user_via_interrupt_flag_register = &fe6d
     user_via_interrupt_enable_register = &fe6e
@@ -68,9 +72,8 @@ endmacro
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
-    \ TODO: I should be able to just use timer1 now
-    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
+    vsync_to_visible_start_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    row_us = us_per_row - 2
    
     sei
     \ We're going to shut the OS out of the loop to make things more stable, so
@@ -82,11 +85,6 @@ endmacro
     lda #&c0:sta user_via_interrupt_enable_register \ enable timer 1 interrupt
     \ Set timer 1 to continuous interrupts mode.
     lda #&40:sta user_via_auxiliary_control_register
-    \TODODELETElda &fe64
-if FALSE \ TODO: DELETE
-    lda irq1v:sta jmp_old_irq_handler+1
-    lda irq1v+1:sta jmp_old_irq_handler+2
-endif
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta frame_count
@@ -240,9 +238,9 @@ endif
     lda &fc:pha
     lda system_via_interrupt_flag_register:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
-    lda #lo(timer2_value_in_us):sta &fe64 \ SFTODO: RENAME timer2... CONSTANT!
-    lda #hi(timer2_value_in_us):sta &fe65
-    lda &fe41 \ clear the VSYNC interrupt
+    lda #lo(vsync_to_visible_start_us):sta user_via_timer_1_low_order_latch
+    lda #hi(vsync_to_visible_start_us):sta user_via_timer_1_high_order_counter
+    lda system_via_register_a \ clear the VSYNC interrupt
     lda #255:sta inverse_raster_row
 if show_missed_vsync or show_rows
     lda #0 eor 7:set_background_a
@@ -253,7 +251,7 @@ endif
 .try_timer1
     bit user_via_interrupt_flag_register:bvc do_rti
     \ Handle timer 1 interrupt.
-    lda &fe64 \ clear timer 1 interrupt flag
+    lda user_via_timer_1_low_order_latch \ clear timer 1 interrupt flag
     dec inverse_raster_row:bmi start_of_visible_region:beq end_of_visible_region
 if show_rows
     \lda inverse_raster_row:and #1:clc:adc #1:eor #7:set_background_a
@@ -262,8 +260,8 @@ endif
     pla:sta &fc:rti
 
 .start_of_visible_region
-    lda #lo(timer1_value_in_us):sta &fe64
-    lda #hi(timer1_value_in_us):sta &fe65
+    lda #lo(row_us):sta user_via_timer_1_low_order_latch
+    lda #hi(row_us):sta user_via_timer_1_high_order_counter
     lda #32:sta inverse_raster_row
 if show_rows
     lda #4 eor 7:set_background_a
@@ -271,7 +269,7 @@ endif
     pla:sta &fc:rti
 
 .end_of_visible_region
-    lda #&ff:sta &fe64:sta &fe65
+    lda #&ff:sta user_via_timer_1_low_order_latch:sta user_via_timer_1_high_order_counter
     inc frame_count
 if show_rows
     lda #5 eor 7:set_background_a
