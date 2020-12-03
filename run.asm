@@ -4,8 +4,11 @@
     equb 0
 .vsync_count
     equb 0
+.SFTODOTHING
+    equb 0
 .screen_ptr
     equw 0
+
 
     org &2000
     guard &5800
@@ -39,13 +42,13 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    \ We want our timer to fire right at the start of the vertical blanking period.
-    scanline_to_interrupt_at = 256
+    scanline_to_interrupt_at = -1
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    timer2_row_value_in_us = us_per_row - 2*us_per_scanline
    
     sei
     lda #&82
@@ -198,15 +201,24 @@ if show_missed_vsync
 endif
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
+    lda #10:sta SFTODOTHING
 .return_to_os
     pla:sta &fc
 .^jmp_old_irq_handler
     jmp &ffff \ patched
 .try_timer2
     lda &fe6d:and #&20:beq return_to_os
-    inc vsync_count
-    lda &fe68
+    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
     \lda #4 eor 7:sta &fe21
+    dec SFTODOTHING:beq bottom_of_screen
+.SFTODOHACK
+    bmi SFTODOHACK
+    lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
+    lda #lo(timer2_row_value_in_us):sta &fe68
+    lda #hi(timer2_row_value_in_us):sta &fe69
+    jmp return_to_os
+.bottom_of_screen
+    inc vsync_count
     jmp return_to_os
 }
      
