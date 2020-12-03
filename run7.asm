@@ -11,21 +11,12 @@
 
 
     org &2000
-    guard &5800
+    guard &7c00
 
-    led_count = 40*32
+    \ TODO: IS THE VSYNC-Y INTERRUPT STUFF USEFUL IN MODE 7? MAYBE, BUT THINK ABOUT IT.
+
+    led_count = 38*2*25*3
     ticks_per_frame = 8
-    show_missed_vsync = FALSE
-    show_rows = FALSE
-    assert not(show_missed_vsync and show_rows)
-    big_leds = TRUE
-    if big_leds
-        led_start_line = 1
-        led_max_line = 5
-    else
-        led_start_line = 2
-        led_max_line = 3
-    endif
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -93,6 +84,9 @@ endmacro
     lda #5:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
+    lda #1:sta pixel
+    lda #0:sta screen_ptr:lda #&7c:sta screen_ptr+1
+
     \ The idea here is that if we took less than 1/50th second to process the last update we
     \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
     \ screen), but if we took longer we just keep going until we catch up.
@@ -124,12 +118,27 @@ endif
     bmi toggle_led
 .sta_count_x_1
     sta $ff00,x \ patched
-    advance_to_next_led
+.advance_to_next_led
+    lda pixel
+    asl a
+    bmi next_character
+    cmp #32:bne not_32:lda #64:.not_32
+    sta pixel
+    jmp led_loop
+.next_character
+    lda #1:sta pixel
+    dec character_x:beq .next_line
+    inc screen_ptr:bne led_loop
+    inc screen_ptr+1:jmp led_loop
+.next_line
+    lda #38:sta character_x
+    SFTODOSCREENPTR
+    jmp led_loop
 .not_going_to_toggle
     sbc #ticks_per_frame
 .sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
     sta $ff00,x \ patched
-    advance_to_next_led
+    jmp advance_to_next_led
 
     \ Toggle this LED.
 .toggle_led
@@ -139,6 +148,18 @@ endif
     adc $ff00,x \ patched
 .sta_count_x_2
     sta $ff00,x \ patched
+
+    txa:and #
+
+    lda $ff00,y \ patched
+    eor SFTODO
+    sta $ff00,y \ patched
+
+xxxx    txa:and #%01011111:sta SFTODO
+xxxx    txa:and #%10100000
+
+
+    error "SFTODO"
     \ Toggle the LED's state.
 .lda_address_low_x_1 \ TODO: _1 suffix now redundant
     lda $ff00,x \ patched
@@ -246,7 +267,7 @@ endif
 if show_rows
     lda #4 eor 7:sta &fe21
 endif
-    lda #31:sta SFTODOTHING
+    lda #31:sta SFTODOTHING \ SFTODO THIS SHOULD BE 24, I AM GOING TO JUST IGNORE THIS FOR NOW
     pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
     \lda #%01000000:sta user_via_interrupt_enable_register
@@ -335,24 +356,12 @@ endmacro
     align &100
 .inverse_row_table
     for i, 0, led_count - 1
-        equb 31 - (i div 40)
-    next
-
-    align &100
-.address_low_table
-    for i, 0, led_count-1
-        equb lo(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
-    next
-
-    align &100
-.address_high_table
-    for i, 0, led_count-1
-        equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
+        equb 24 - (i div (40*6)
     next
 
 .end
 
-    puttext "boot.txt", "!BOOT", 0
+    puttext "boot7.txt", "!BOOT", 0
     save "BLINKEN", start, end
 
 \ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
