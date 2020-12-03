@@ -104,13 +104,19 @@ endif
 .missed_vsync
 .SFTODO999
 
+.led_loop_sec
+    sec
 .led_loop
+.SFTODOHANG99
+    bcc SFTODOHANG99
+    \ TIME: To hit 50fps consistently, I have 7.3 cycles per LED. Obviously that's not
+    \ possible.
 
     \ Decrement this LED's count and do nothing else if it's not yet zero.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda $ff00,x \ patched
-    sec
+    \ sec - we have arranged that carry is always set here already
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
     bmi not_going_to_toggle
@@ -123,12 +129,12 @@ endif
 .return_from_advance_to_next_led_group
     dey
     beq next_line
-    lda SFTODOTABLE,y:cmp #&40:bne led_loop
-    inc screen_ptr:bne led_loop
-    inc screen_ptr+1:jmp led_loop
+    lda SFTODOTABLE,y:bpl led_loop
+    inc screen_ptr:bne led_loop_sec
+    inc screen_ptr+1:jmp led_loop_sec
 .next_line
     ldy #38*6
-    clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop
+    clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop_sec
     inc screen_ptr+1:jmp led_loop
 .not_going_to_toggle
     sbc #ticks_per_frame
@@ -142,8 +148,10 @@ endif
 
     \ Toggle this LED.
 .toggle_led
+.SFTODOHANG44
+    bcs SFTODOHANG44
     \ This LED's count has gone negative; add the period.
-    clc
+    \ clc - we have arranged that carry is always clear here already
 .adc_period_x
     adc $ff00,x \ patched
 .sta_count_x_2
@@ -303,7 +311,7 @@ endif
     equb 0
     for i, 1, 38*6
         if (i - 1) mod 6 == 5
-            equb 64
+            equb 128+64
         else
             equb 1 << ((i - 1) mod 6)
         endif
