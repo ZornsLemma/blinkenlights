@@ -46,7 +46,7 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = -10
+    scanline_to_interrupt_at = -2
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
@@ -221,9 +221,7 @@ endif
     lda user_via_interrupt_flag_register \:bpl return_to_os
     and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
     lda &fe64 \ clear timer1 interrupt flag
-    dec SFTODOTHING:beq bottom_of_screen
-.SFTODOHACK2
-    bmi SFTODOHACK2
+    dec SFTODOTHING:bmi bottom_of_screen
     lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
@@ -233,7 +231,7 @@ endif
     lda #hi(timer1_value_in_us):sta &fe65
     lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
     lda #4 eor 7:sta &fe21
-    lda #32:sta SFTODOTHING
+    lda #31:sta SFTODOTHING
     pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
     lda #5 eor 7:sta &fe21
@@ -316,6 +314,12 @@ endmacro
     next
 
     HACKTODO=0
+
+    align &100
+.inverse_row_table
+    for i, 0, led_count - 1
+        equb 31 - (i % 40)
+    next
 
     align &100
 .address_low_table
