@@ -8,6 +8,8 @@
     equb 0
 .screen_ptr
     equw 0
+.tmp_y
+    equb 0
 
 
     org &2000
@@ -72,37 +74,29 @@ endmacro
     \ Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
-    lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
-    lda #hi(address_low_table):sta lda_address_low_x_1+2
-    lda #hi(address_high_table):sta lda_address_high_x_1+2
-    lda #hi(inverse_row_table):sta lda_inverse_row_x+2
+    \lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     \ Reset X and led_group_count.
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #5:sta led_group_count \ TODO: SHOULD BE 5
+    lda #&16:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
-    lda #1:sta pixel
-    lda #0:sta screen_ptr:lda #&7c:sta screen_ptr+1
+    lda #&02:sta screen_ptr:lda #&7c:sta screen_ptr+1
+    ldy #38*6
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
     \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
     \ screen), but if we took longer we just keep going until we catch up.
+    jmp SFTODO999
     dec vsync_count
     bpl missed_vsync
 .vsync_wait_loop
     lda vsync_count
     bmi vsync_wait_loop
-if show_missed_vsync
-    jmp SFTODOHACK
-endif
 .missed_vsync
-if show_missed_vsync
-    lda #1 eor 7:sta &fe21
-.SFTODOHACK
-endif
+.SFTODO999
 
 .led_loop
 
@@ -119,21 +113,17 @@ endif
 .sta_count_x_1
     sta $ff00,x \ patched
 .advance_to_next_led
-    lda pixel
-    asl a
-    bmi next_character
-    cmp #32:bne not_32:lda #64:.not_32
-    sta pixel
-    jmp led_loop
-.next_character
-    lda #1:sta pixel
-    dec character_x:beq .next_line
+    inx:beq advance_to_next_led_group
+.return_from_advance_to_next_led_group
+    dey
+    beq next_line
+    lda SFTODOTABLE,y:cmp #&40:bne led_loop
     inc screen_ptr:bne led_loop
     inc screen_ptr+1:jmp led_loop
 .next_line
-    lda #38:sta character_x
-    SFTODOSCREENPTR
-    jmp led_loop
+    ldy #38*6
+    clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop
+    inc screen_ptr+1:jmp led_loop
 .not_going_to_toggle
     sbc #ticks_per_frame
 .sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
@@ -149,85 +139,31 @@ endif
 .sta_count_x_2
     sta $ff00,x \ patched
 
-    txa:and #
+    \ Toggle the LED's state in screen RAM.
+    lda SFTODOTABLE,y
+    \ TODO: Scope for using CMOS instructions to avoid needing Y=0
+    sty tmp_y
+    ldy #0:eor (screen_ptr),y:sta (screen_ptr),y
+    ldy tmp_y
+    jmp advance_to_next_led
 
-    lda $ff00,y \ patched
-    eor SFTODO
-    sta $ff00,y \ patched
-
-xxxx    txa:and #%01011111:sta SFTODO
-xxxx    txa:and #%10100000
-
-
-    error "SFTODO"
-    \ Toggle the LED's state.
-.lda_address_low_x_1 \ TODO: _1 suffix now redundant
-    lda $ff00,x \ patched
-    sta screen_ptr
-.lda_address_high_x_1 \ TODO: _1 suffix now redundant
-    lda $ff00,x \ patched
-    sta screen_ptr+1
+if FALSE \ SFTODO?!
     \ If the raster is currently on this row, wait for it to pass.
 .lda_inverse_row_x
     lda $ff00,x \ patched
 .raster_loop
     cmp SFTODOTHING
     beq raster_loop
-.lda_state_x
-    lda $ff00,x \ patched
-    eor #255
-.sta_state_x
-    sta $ff00,x \ patched
-.reset_toggle_byte_done
-    beq turn_led_off
-
-    \ Turn this LED on.
-    \ TIME: This takes 2+2*(2+6)+2+4*(2+6)=52 cycles (for big LEDs)
-if big_leds
-    lda #%00111100
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #5:sta (screen_ptr),y
-    lda #%01111110
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-else
-    lda #%00011000
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #3:sta (screen_ptr),y
-    lda #%00111100
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
 endif
-    advance_to_next_led
-
-.turn_led_off
-    \ Turn this LED off.
-    \ TIME: This takes 2+6*(2+6)=50 cycles (for big LEDs)
-    lda #0
-    for y, 0, led_max_line
-        \ TODO: Scope for using CMOS
-        if y == 0
-            ldy #0 \ TODO: tay would save one byte, but no faster and more obscure
-        else
-            iny
-        endif
-        sta (screen_ptr),y
-    next
-    advance_to_next_led_fall_through
 
 .advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
     inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
     inc adc_period_x+2
-    inc lda_state_x+2:inc sta_state_x+2
-    inc lda_address_low_x_1+2
-    inc lda_address_high_x_1+2
-    inc lda_inverse_row_x+2
+    \inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
-    jmp led_loop
+    jmp return_from_advance_to_next_led_group
 .forever_loop_indirect
     jmp forever_loop
 
@@ -239,9 +175,6 @@ endif
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
     lda &fe41 \ SFTODO: clear this interrupt
-if show_missed_vsync or show_rows
-    lda #0 eor 7:sta &fe21
-endif
     pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
 .return_to_os
     pla:sta &fc
@@ -253,10 +186,6 @@ endif
     and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
     lda &fe64 \ clear timer1 interrupt flag
     dec SFTODOTHING:bmi bottom_of_screen
-if show_rows
-    \lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
-    lda SFTODOTHING:and #3:eor #7:sta &fe21
-endif
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
     lda user_via_interrupt_flag_register:and #&20:beq return_to_os_hack
@@ -264,9 +193,6 @@ endif
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
     lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
-if show_rows
-    lda #4 eor 7:sta &fe21
-endif
     lda #31:sta SFTODOTHING \ SFTODO THIS SHOULD BE 24, I AM GOING TO JUST IGNORE THIS FOR NOW
     pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
@@ -275,9 +201,6 @@ endif
     \lda &fe64 \ clear timer1 interrupt flag *again*!?
     \lda #0:sta &fe64:sta &fe65
     inc vsync_count
-if show_rows
-    lda #5 eor 7:sta &fe21
-endif
     pla:sta &fc:rti \ jmp return_to_os
 .return_to_os_hack
     pla:sta &fc:rti
@@ -353,10 +276,23 @@ endmacro
 
     HACKTODO=0
 
+if FALSE \ SFTODO
     align &100
 .inverse_row_table
     for i, 0, led_count - 1
         equb 24 - (i div (40*6)
+    next
+endif
+
+    align &100
+.SFTODOTABLE
+    equb 0
+    for i, 1, 38*6
+        if (i - 1) mod 6 == 5
+            equb 64
+        else
+            equb 1 << ((i - 1) mod 6)
+        endif
     next
 
 .end
