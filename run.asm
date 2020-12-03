@@ -2,9 +2,9 @@
     guard &90
 .led_group_count
     equb 0
-.vsync_count
+.frame_count
     equb 0
-.SFTODOTHING \ SFTODO: RENAME inverse_raster_row OR SIMILAR
+.inverse_raster_row
     equb 0
 .screen_ptr
     equw 0
@@ -18,6 +18,7 @@
     show_missed_vsync = FALSE
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
+    slow_palette = TRUE
     big_leds = TRUE
     if big_leds
         led_start_line = 1
@@ -27,14 +28,28 @@
         led_max_line = 3
     endif
 
-    sys_int_vsync = 2
-    sys_via_ifr = &fe40+13
     irq1v = &204
 
+    ula_palette = &fe21
+
+    system_via_interrupt_flag_register = &fe4d
+    system_via_interrupt_enable_register = &fe4e
     user_via_auxiliary_control_register = &fe6b
     user_via_interrupt_flag_register = &fe6d
     user_via_interrupt_enable_register = &fe6e
 
+macro set_background_a
+    sta ula_palette
+    if slow_palette
+        eor #%00010000:sta ula_palette
+        eor #%00110000:sta ula_palette
+        eor #%00010000:sta ula_palette
+        eor #%01010000:sta ula_palette
+        eor #%00010000:sta ula_palette
+        eor #%00110000:sta ula_palette
+        eor #%00010000:sta ula_palette
+    endif
+endmacro
 
 macro advance_to_next_led_fall_through
     inx
@@ -58,19 +73,23 @@ endmacro
     timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
    
     sei
-    lda #&7f:sta &fe4e:sta user_via_interrupt_enable_register \ disable all interrupts
-    lda #&82
-    sta &fe4e
-    lda #&a0
+    \ We're going to shut the OS out of the loop to make things more stable, so
+    \ disable all interrupts then re-enable the ones we're interested in.
+    lda #&7f
+    sta system_via_interrupt_enable_register
     sta user_via_interrupt_enable_register
-    lda #%11000000:sta user_via_interrupt_enable_register
-    lda #%01000000:sta user_via_auxiliary_control_register
-    lda &fe64
+    lda #&82:sta system_via_interrupt_enable_register \ enable VSYNC interrupt
+    lda #&c0:sta user_via_interrupt_enable_register \ enable timer 1 interrupt
+    \ Set timer 1 to continuous interrupts mode.
+    lda #&40:sta user_via_auxiliary_control_register
+    \TODODELETElda &fe64
+if FALSE \ TODO: DELETE
     lda irq1v:sta jmp_old_irq_handler+1
     lda irq1v+1:sta jmp_old_irq_handler+2
+endif
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
-    lda #0:sta vsync_count
+    lda #0:sta frame_count
     cli
     jmp forever_loop
 
@@ -93,20 +112,20 @@ endmacro
     lda #5:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
 
-    \ The idea here is that if we took less than 1/50th second to process the last update we
-    \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
-    \ screen), but if we took longer we just keep going until we catch up.
-    dec vsync_count
+    ; The idea here is that if we took less than 1/50th second to process the
+    ; last update we wait for the next frame to start, but if we took longer we
+    ; just keep going until we catch up.
+    dec frame_count
     bpl missed_vsync
 .vsync_wait_loop
-    lda vsync_count
+    lda frame_count
     bmi vsync_wait_loop
 if show_missed_vsync
     jmp SFTODOHACK
 endif
 .missed_vsync
 if show_missed_vsync
-    lda #1 eor 7:sta &fe21
+    lda #1 eor 7:set_background_a
 .SFTODOHACK
 endif
 
@@ -150,7 +169,7 @@ endif
 .lda_inverse_row_x
     lda $ff00,x \ patched
 .raster_loop
-    cmp SFTODOTHING
+    cmp inverse_raster_row
     beq raster_loop
 .lda_state_x
     lda $ff00,x \ patched
@@ -210,52 +229,52 @@ endif
 .forever_loop_indirect
     jmp forever_loop
 
+; inverse_raster_row is used to track where we are on the screen, in terms of character
+; rows. This is used to avoid updating LEDs when the raster is passing over
+; them, which would cause visible tearing. It's 255 from VSYNC to the
+; first visible scan line. In the visible region, it ranges from 32 on the top
+; character row to 1 on the bottom character row. Below the last visible scan
+; line it's 0.
 .irq_handler
 {
     lda &fc:pha
-    lda &fe4d:and #&02:beq try_timer1
+    lda system_via_interrupt_flag_register:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
-    lda #lo(timer2_value_in_us):sta &fe68
-    lda #hi(timer2_value_in_us):sta &fe69
-    lda &fe41 \ SFTODO: clear this interrupt
+    lda #lo(timer2_value_in_us):sta &fe64 \ SFTODO: RENAME timer2... CONSTANT!
+    lda #hi(timer2_value_in_us):sta &fe65
+    lda &fe41 \ clear the VSYNC interrupt
+    lda #255:sta inverse_raster_row
 if show_missed_vsync or show_rows
-    lda #0 eor 7:sta &fe21
+    lda #0 eor 7:set_background_a
 endif
-    pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
-.return_to_os
-    pla:sta &fc
-.^jmp_old_irq_handler
-    jmp &ffff \ patched
+.do_rti
+    pla:sta &fc:rti
+
 .try_timer1
-    \jmp try_timer2
-    lda user_via_interrupt_flag_register \:bpl return_to_os
-    and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
-    lda &fe64 \ clear timer1 interrupt flag
-    dec SFTODOTHING:bmi bottom_of_screen
+    bit user_via_interrupt_flag_register:bvc do_rti
+    \ Handle timer 1 interrupt.
+    lda &fe64 \ clear timer 1 interrupt flag
+    dec inverse_raster_row:bmi start_of_visible_region:beq end_of_visible_region
 if show_rows
-    \lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
-    lda SFTODOTHING:and #3:eor #7:sta &fe21
+    \lda inverse_raster_row:and #1:clc:adc #1:eor #7:set_background_a
+    lda inverse_raster_row:and #3:eor #7:set_background_a
 endif
-    pla:sta &fc:rti \ jmp return_to_os
-.try_timer2
-    lda user_via_interrupt_flag_register:and #&20:beq return_to_os_hack
-    \lda #%11000000:sta user_via_interrupt_enable_register
+    pla:sta &fc:rti
+
+.start_of_visible_region
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
-    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
+    lda #32:sta inverse_raster_row
 if show_rows
-    lda #4 eor 7:sta &fe21
+    lda #4 eor 7:set_background_a
 endif
-    lda #31:sta SFTODOTHING
-    pla:sta &fc:rti \ jmp return_to_os
-.bottom_of_screen
-    \lda #%01000000:sta user_via_interrupt_enable_register
+    pla:sta &fc:rti
+
+.end_of_visible_region
     lda #&ff:sta &fe64:sta &fe65
-    \lda &fe64 \ clear timer1 interrupt flag *again*!?
-    \lda #0:sta &fe64:sta &fe65
-    inc vsync_count
+    inc frame_count
 if show_rows
-    lda #5 eor 7:sta &fe21
+    lda #5 eor 7:set_background_a
 endif
     pla:sta &fc:rti \ jmp return_to_os
 .return_to_os_hack
@@ -335,7 +354,7 @@ endmacro
     align &100
 .inverse_row_table
     for i, 0, led_count - 1
-        equb 31 - (i div 40)
+        equb 32 - (i div 40)
     next
 
     align &100
