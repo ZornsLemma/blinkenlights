@@ -51,7 +51,7 @@ endmacro
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
-    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline + 32
     timer1_value_in_us = us_per_row \ - 2*us_per_scanline
    
     sei
@@ -227,12 +227,12 @@ endif
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
     lda user_via_interrupt_flag_register:and #&20:beq return_to_os
-    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
-    lda #4 eor 7:sta &fe21
-    lda #32:sta SFTODOTHING
     \lda #%11000000:sta user_via_interrupt_enable_register
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
+    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
+    lda #4 eor 7:sta &fe21
+    lda #32:sta SFTODOTHING
     pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
     lda #5 eor 7:sta &fe21
@@ -240,7 +240,7 @@ endif
     lda #&ff:sta &fe64:sta &fe65
     \lda &fe64 \ clear timer1 interrupt flag *again*!?
     \lda #0:sta &fe64:sta &fe65
-    inc vsync_count
+    \ SFTODO TCO TO STOP ANIMATION inc vsync_count
     pla:sta &fc:rti \ jmp return_to_os
 }
      
