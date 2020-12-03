@@ -53,6 +53,7 @@ endmacro
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
+    \ TODO: I should be able to just use timer1 now
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
     timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
    
