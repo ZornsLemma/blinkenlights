@@ -46,13 +46,13 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = 64 \ TODO: "should" be -1
+    scanline_to_interrupt_at = -11
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    timer1_value_in_us = us_per_row - 2*us_per_scanline
+    timer1_value_in_us = us_per_row \ - 2*us_per_scanline
    
     sei
     lda #&82
@@ -222,14 +222,14 @@ endif
     lda &fe64 \ clear timer1 interrupt flag
     dec SFTODOTHING:beq bottom_of_screen
 .SFTODOHACK2
-    \bmi SFTODOHACK2
+    bmi SFTODOHACK2
     lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
     lda user_via_interrupt_flag_register:and #&20:beq return_to_os
     lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
     lda #4 eor 7:sta &fe21
-    lda #16:sta SFTODOTHING
+    lda #32:sta SFTODOTHING
     \lda #%11000000:sta user_via_interrupt_enable_register
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
