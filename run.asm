@@ -300,3 +300,5 @@ endmacro
 \ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
 
 \ TODO: I should keep on with the mode 4 version, but I should also do a mode 7 version using separated graphics - that should be super smooth as it's character based and I can easily toggle individual sixels=LEDs
+
+\ TODO: I should look into having the timer update (approximately; just sketching out a solution here) a "current line number" variable, and then before toggling an LED we would wait for the raster to pass if it's on our line or the line before - this would slow things down slightly, but we'd avoid any tearing
