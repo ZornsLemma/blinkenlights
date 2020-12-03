@@ -18,7 +18,7 @@
     \ TODO: IS THE VSYNC-Y INTERRUPT STUFF USEFUL IN MODE 7? MAYBE, BUT THINK ABOUT IT.
 
     led_count = 38*2*25*3
-    ticks_per_frame = 8
+    ticks_per_frame = 4
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -106,6 +106,7 @@ endif
 
 .led_loop_sec
     sec
+    \ TIME: 4+0.5*(2+2+2)+0.5*(3+2+3)+5+2+2+2+2+4+2+5+3=38 cycles per LED v approx with no toggling - probably down to 35 with ticks_per_frame <= 4
 .led_loop
 if FALSE
 .SFTODOHANG99
@@ -119,9 +120,11 @@ endif
 .lda_count_x
     lda $ff00,x \ patched
     \ sec - we have arranged that carry is always set here already
+if ticks_per_frame > 4
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
     bmi not_going_to_toggle
+endif
     sbc #ticks_per_frame
     bmi toggle_led
 .sta_count_x_1
@@ -136,16 +139,13 @@ endif
     inc screen_ptr+1:jmp led_loop
 .next_line
     ldy #38*6
+    \ TODO: Since we probably know C is set, we could get rid of clc and adc#2 instead - but this code isn't executed that often, so not a huge win
     clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop_sec
     inc screen_ptr+1:jmp led_loop
+if ticks_per_frame > 4
 .not_going_to_toggle
     sbc #ticks_per_frame
-if TRUE
     jmp sta_count_x_1
-else
-.sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
-    sta $ff00,x \ patched
-    jmp advance_to_next_led
 endif
 
     \ Toggle this LED.
