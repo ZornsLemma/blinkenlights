@@ -46,15 +46,16 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = -11
+    scanline_to_interrupt_at = -10
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
-    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline + 32
-    timer1_value_in_us = us_per_row \ - 2*us_per_scanline
+    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
    
     sei
+    lda #&7f:sta &fe4e:sta user_via_interrupt_enable_register \ disable all interrupts
     lda #&82
     sta &fe4e
     lda #&a0
@@ -226,7 +227,7 @@ endif
     lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
     pla:sta &fc:rti \ jmp return_to_os
 .try_timer2
-    lda user_via_interrupt_flag_register:and #&20:beq return_to_os
+    lda user_via_interrupt_flag_register:and #&20:beq return_to_os_hack
     \lda #%11000000:sta user_via_interrupt_enable_register
     lda #lo(timer1_value_in_us):sta &fe64
     lda #hi(timer1_value_in_us):sta &fe65
@@ -240,8 +241,10 @@ endif
     lda #&ff:sta &fe64:sta &fe65
     \lda &fe64 \ clear timer1 interrupt flag *again*!?
     \lda #0:sta &fe64:sta &fe65
-    \ SFTODO TCO TO STOP ANIMATION inc vsync_count
+    inc vsync_count
     pla:sta &fc:rti \ jmp return_to_os
+.return_to_os_hack
+    pla:sta &fc:rti
 }
      
 
