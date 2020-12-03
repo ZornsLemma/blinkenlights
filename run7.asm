@@ -49,7 +49,8 @@ endmacro
     \ TODO: I should be able to just use timer1 now
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
     timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
-   
+
+if FALSE
     sei
     lda #&7f:sta &fe4e:sta user_via_interrupt_enable_register \ disable all interrupts
     lda #&82
@@ -65,6 +66,7 @@ endmacro
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta vsync_count
     cli
+endif
     jmp forever_loop
 
     \ TODO: Pay proper attention to alignment so the branches in the important code never take longer than necessary - this is a crude hack which will probably do the job but I haven't checked.
@@ -72,7 +74,11 @@ endmacro
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
-    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
+    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2
+if FALSE
+    sta sta_count_x_1b+2
+endif
+    sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
     \lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
@@ -126,9 +132,13 @@ endmacro
     inc screen_ptr+1:jmp led_loop
 .not_going_to_toggle
     sbc #ticks_per_frame
+if TRUE
+    jmp sta_count_x_1
+else
 .sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
     sta $ff00,x \ patched
     jmp advance_to_next_led
+endif
 
     \ Toggle this LED.
 .toggle_led
@@ -159,7 +169,11 @@ endif
 .advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
-    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
+    inc lda_count_x+2:inc sta_count_x_1+2
+if FALSE
+    inc sta_count_x_1b+2
+endif
+    inc sta_count_x_2+2
     inc adc_period_x+2
     \inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
