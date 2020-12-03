@@ -29,6 +29,10 @@
     sys_via_ifr = &fe40+13
     irq1v = &204
 
+    user_via_auxiliary_control_register = &fe6b
+    user_via_interrupt_flag_register = &fe6d
+    user_via_interrupt_enable_register = &fe6e
+
 
 macro advance_to_next_led_fall_through
     inx
@@ -42,19 +46,22 @@ endmacro
 
 .start
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = -1
+    scanline_to_interrupt_at = 64 \ TODO: "should" be -1
     vsync_position = 35
     total_rows = 39
     us_per_scanline = 64
     us_per_row = 8*us_per_scanline
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    timer2_row_value_in_us = us_per_row - 2*us_per_scanline
+    timer1_value_in_us = us_per_row - 2*us_per_scanline
    
     sei
     lda #&82
     sta &fe4e
     lda #&a0
-    sta &fe6e
+    sta user_via_interrupt_enable_register
+    lda #%11000000:sta user_via_interrupt_enable_register
+    lda #%01000000:sta user_via_auxiliary_control_register
+    lda &fe64
     lda irq1v:sta jmp_old_irq_handler+1
     lda irq1v+1:sta jmp_old_irq_handler+2
     lda #lo(irq_handler):sta irq1v
@@ -194,32 +201,47 @@ endif
 .irq_handler
 {
     lda &fc:pha
-    lda &fe4d:and #&02:beq try_timer2
+    lda &fe4d:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
 if show_missed_vsync
     lda #0 eor 7:sta &fe21
 endif
+    lda #0 eor 7:sta &fe21
+    lda &fe41 \ SFTODO: clear this interrupt
     lda #lo(timer2_value_in_us):sta &fe68
     lda #hi(timer2_value_in_us):sta &fe69
-    lda #10:sta SFTODOTHING
+    pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
 .return_to_os
     pla:sta &fc
 .^jmp_old_irq_handler
     jmp &ffff \ patched
-.try_timer2
-    lda &fe6d:and #&20:beq return_to_os
-    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
-    \lda #4 eor 7:sta &fe21
+.try_timer1
+    \jmp try_timer2
+    lda user_via_interrupt_flag_register \:bpl return_to_os
+    and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
+    lda &fe64 \ clear timer1 interrupt flag
     dec SFTODOTHING:beq bottom_of_screen
-.SFTODOHACK
-    bmi SFTODOHACK
+.SFTODOHACK2
+    \bmi SFTODOHACK2
     lda SFTODOTHING:and #1:clc:adc #1:eor #7:sta &fe21
-    lda #lo(timer2_row_value_in_us):sta &fe68
-    lda #hi(timer2_row_value_in_us):sta &fe69
-    jmp return_to_os
+    pla:sta &fc:rti \ jmp return_to_os
+.try_timer2
+    lda user_via_interrupt_flag_register:and #&20:beq return_to_os
+    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
+    lda #4 eor 7:sta &fe21
+    lda #16:sta SFTODOTHING
+    \lda #%11000000:sta user_via_interrupt_enable_register
+    lda #lo(timer1_value_in_us):sta &fe64
+    lda #hi(timer1_value_in_us):sta &fe65
+    pla:sta &fc:rti \ jmp return_to_os
 .bottom_of_screen
+    lda #5 eor 7:sta &fe21
+    \lda #%01000000:sta user_via_interrupt_enable_register
+    lda #&ff:sta &fe64:sta &fe65
+    \lda &fe64 \ clear timer1 interrupt flag *again*!?
+    \lda #0:sta &fe64:sta &fe65
     inc vsync_count
-    jmp return_to_os
+    pla:sta &fc:rti \ jmp return_to_os
 }
      
 
