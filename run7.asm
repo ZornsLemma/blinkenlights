@@ -18,7 +18,7 @@
     \ TODO: IS THE VSYNC-Y INTERRUPT STUFF USEFUL IN MODE 7? MAYBE, BUT THINK ABOUT IT.
 
     led_count = 38*2*25*3
-    ticks_per_frame = 4
+    ticks_per_frame = 8
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
@@ -50,23 +50,16 @@ endmacro
     timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
     timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
 
-if FALSE
     sei
     lda #&7f:sta &fe4e:sta user_via_interrupt_enable_register \ disable all interrupts
     lda #&82
     sta &fe4e
-    lda #&a0
-    sta user_via_interrupt_enable_register
-    lda #%11000000:sta user_via_interrupt_enable_register
-    lda #%01000000:sta user_via_auxiliary_control_register
-    lda &fe64
     lda irq1v:sta jmp_old_irq_handler+1
     lda irq1v+1:sta jmp_old_irq_handler+2
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta vsync_count
     cli
-endif
     jmp forever_loop
 
     \ TODO: Pay proper attention to alignment so the branches in the important code never take longer than necessary - this is a crude hack which will probably do the job but I haven't checked.
@@ -95,7 +88,10 @@ endif
     \ The idea here is that if we took less than 1/50th second to process the last update we
     \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
     \ screen), but if we took longer we just keep going until we catch up.
-    jmp SFTODO999
+    dec vsync_count
+    dec vsync_count
+    dec vsync_count
+    dec vsync_count
     dec vsync_count
     bpl missed_vsync
 .vsync_wait_loop
@@ -196,40 +192,15 @@ endif
 .irq_handler
 {
     lda &fc:pha
-    lda &fe4d:and #&02:beq try_timer1
+    lda &fe4d:and #&02:beq return_to_os
     \ Handle VSYNC interrupt.
-    lda #lo(timer2_value_in_us):sta &fe68
-    lda #hi(timer2_value_in_us):sta &fe69
     lda &fe41 \ SFTODO: clear this interrupt
+    inc vsync_count
     pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
 .return_to_os
     pla:sta &fc
 .^jmp_old_irq_handler
     jmp &ffff \ patched
-.try_timer1
-    \jmp try_timer2
-    lda user_via_interrupt_flag_register \:bpl return_to_os
-    and #&40:beq try_timer2 \ TODO: we could use bit instead of lda and and
-    lda &fe64 \ clear timer1 interrupt flag
-    dec SFTODOTHING:bmi bottom_of_screen
-    pla:sta &fc:rti \ jmp return_to_os
-.try_timer2
-    lda user_via_interrupt_flag_register:and #&20:beq return_to_os_hack
-    \lda #%11000000:sta user_via_interrupt_enable_register
-    lda #lo(timer1_value_in_us):sta &fe64
-    lda #hi(timer1_value_in_us):sta &fe65
-    lda &fe68 \ TODO: POSS NOT NEEDED IF WE ARE DOING STA TO IT
-    lda #31:sta SFTODOTHING \ SFTODO THIS SHOULD BE 24, I AM GOING TO JUST IGNORE THIS FOR NOW
-    pla:sta &fc:rti \ jmp return_to_os
-.bottom_of_screen
-    \lda #%01000000:sta user_via_interrupt_enable_register
-    lda #&ff:sta &fe64:sta &fe65
-    \lda &fe64 \ clear timer1 interrupt flag *again*!?
-    \lda #0:sta &fe64:sta &fe65
-    inc vsync_count
-    pla:sta &fc:rti \ jmp return_to_os
-.return_to_os_hack
-    pla:sta &fc:rti
 }
      
 
@@ -265,7 +236,7 @@ endif
 
 macro pequb x
     assert x >= 0 and x <= 255
-    equb x
+    equb int(x/4) \ SFTODO HACK BECAUSE WE CAN'T HIT CLOSE TO 50FPS
 endmacro
 
     align &100
