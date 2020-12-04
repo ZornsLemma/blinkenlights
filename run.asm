@@ -19,7 +19,8 @@
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
-    big_leds = TRUE
+    big_leds = FALSE
+    led_style = 0 \ 0=circular, 1=diamond
     if big_leds
         led_start_line = 1
         led_max_line = 5
@@ -187,21 +188,44 @@ endif
     \ TIME: This takes 2+2*(2+6)+2+4*(2+6)=52 cycles (for big LEDs)
     \ TODO: We could offer other LED shapes, e.g. diamond, rectangular
 if big_leds
-    lda #%00111100
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #5:sta (screen_ptr),y
-    lda #%01111110
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
+    if led_style == 0
+        lda #%00111100
+        ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+        ldy #5:sta (screen_ptr),y
+        lda #%01111110
+        dey:sta (screen_ptr),y
+        dey:sta (screen_ptr),y
+        dey:sta (screen_ptr),y
+        dey:sta (screen_ptr),y
+    elif led_style == 1
+        lda #%00010000
+        ldy #0:sta (screen_ptr),y \ TODO: CMOS?
+        ldy #4:sta (screen_ptr),y
+        lda #%00111000
+        dey:sta (screen_ptr),y
+        ldy #1:sta (screen_ptr),y
+        lda #%01111100
+        iny:sta (screen_ptr),y
+    else
+        error "Unknown led_style"
+    endif
 else
-    lda #%00011000
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    ldy #3:sta (screen_ptr),y
-    lda #%00111100
-    dey:sta (screen_ptr),y
-    dey:sta (screen_ptr),y
+    if led_style == 0
+        lda #%00011000
+        ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+        ldy #3:sta (screen_ptr),y
+        lda #%00111100
+        dey:sta (screen_ptr),y
+        dey:sta (screen_ptr),y
+    elif led_style == 1
+        lda #%00010000
+        ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+        ldy #2:sta (screen_ptr),y
+        lda #%00111000
+        dey:sta (screen_ptr),y
+    else
+        error "Unknown led_style"
+    endif
 endif
     advance_to_next_led
 
