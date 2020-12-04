@@ -15,7 +15,7 @@
 
     led_count = 40*32
     ticks_per_frame = 8
-    show_missed_vsync = TRUE
+    show_missed_vsync = FALSE
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
@@ -234,10 +234,10 @@ endif
 .forever_loop_indirect
     jmp forever_loop
 
-; inverse_raster_row is used to track where we are on the screen, in terms of character
-; rows. This is used to avoid updating LEDs when the raster is passing over
-; them, which would cause visible tearing. It's 255 from VSYNC to the
-; first visible scan line. In the visible region, it ranges from 32 on the top
+; inverse_raster_row is used to track where we are on the screen, in terms of
+; character rows. This is used to avoid updating LEDs when the raster is passing
+; over them, which would cause visible tearing. It's 255 from VSYNC to the first
+; visible scan line. In the visible region, it ranges from 32 on the top
 ; character row to 1 on the bottom character row. Below the last visible scan
 ; line it's 0.
 .irq_handler
@@ -249,9 +249,6 @@ endif
     lda #hi(vsync_to_visible_start_us):sta user_via_timer_1_high_order_counter
     lda system_via_register_a \ clear the VSYNC interrupt
     lda #255:sta inverse_raster_row
-if show_missed_vsync or show_rows
-    lda #0 eor 7:set_background_a
-endif
 .do_rti
     pla:sta &fc:rti
 
@@ -280,6 +277,9 @@ endif
     inc frame_count
 if show_rows
     lda #5 eor 7:set_background_a
+endif
+if show_missed_vsync
+    lda #0 eor 7:set_background_a
 endif
     pla:sta &fc:rti \ jmp return_to_os
 .return_to_os_hack
