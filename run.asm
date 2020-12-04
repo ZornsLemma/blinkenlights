@@ -15,8 +15,8 @@
 
     led_count = 40*32
     ticks_per_frame = 8
-    show_missed_vsync = FALSE
-    show_rows = TRUE
+    show_missed_vsync = TRUE
+    show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
     big_leds = TRUE
@@ -163,22 +163,29 @@ endif
 .lda_address_high_x_1 \ TODO: _1 suffix now redundant
     lda $ff00,x \ patched
     sta screen_ptr+1
-    \ If the raster is currently on this row, wait for it to pass.
+    ; We're about to modify screen memory, so if the raster is currently on this
+    ; row, wait for it to pass.
 .lda_inverse_row_x
     lda $ff00,x \ patched
 .raster_loop
     cmp inverse_raster_row
     beq raster_loop
+    ; TIME: From this point, we will take 4+2+5+2.5=14.5 cycles toggling the
+    ; state and up to 52 cycles altering screen memory; that's 66.5 cycles. A
+    ; scanline is 128 cycles and the top and bottom scanlines of each character
+    ; row are always blank, so we should always avoid any visible tearing even
+    ; if there's a little jitter or if the raster enters this character row
+    ; immediately after the above test passed.
 .lda_state_x
     lda $ff00,x \ patched
     eor #255
 .sta_state_x
     sta $ff00,x \ patched
-.reset_toggle_byte_done
     beq turn_led_off
 
     \ Turn this LED on.
     \ TIME: This takes 2+2*(2+6)+2+4*(2+6)=52 cycles (for big LEDs)
+    \ TODO: We could offer other LED shapes, e.g. diamond, rectangular
 if big_leds
     lda #%00111100
     ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
