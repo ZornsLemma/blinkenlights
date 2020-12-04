@@ -352,26 +352,6 @@ endif
 }
      
 
-if FALSE \ TODO: DELETE
-.led_pattern
-if FALSE
-    equb %00111100
-    equb %01111110
-    equb %01111110
-    equb %01111110
-    equb %01111110
-    equb %00111100
-else
-    \ TODO: If I stick with this, I can avoid plotting the all 0s rows
-    equb %00000000
-    equb %00011000
-    equb %00111100
-    equb %00111100
-    equb %00011000
-    equb %00000000
-endif
-endif
-
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
     \ random set of frequencies each time.
     randomize 42
@@ -443,9 +423,3 @@ endmacro
 
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
-
-\ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
-
-\ TODO: I should keep on with the mode 4 version, but I should also do a mode 7 version using separated graphics - that should be super smooth as it's character based and I can easily toggle individual sixels=LEDs
-
-\ TODO: I should look into having the timer update (approximately; just sketching out a solution here) a "current line number" variable, and then before toggling an LED we would wait for the raster to pass if it's on our line or the line before - this would slow things down slightly, but we'd avoid any tearing
