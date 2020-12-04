@@ -19,8 +19,9 @@
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
-    big_leds = TRUE
-    led_style = 3 \ 0=circular, 1=diamond, 2=rectangular, 3=square
+    big_leds = FALSE
+    \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
+    led_style = 4 \ 0=circular, 1=diamond, 2=rectangular, 3=square, 4=triangular
     if big_leds
         led_start_line = 1
         led_max_line = 5
@@ -219,6 +220,16 @@ if big_leds
         iny:sta (screen_ptr),y
         iny:sta (screen_ptr),y
         iny:sta (screen_ptr),y
+    elif led_style == 4
+        lda #%00010000
+        ldy #0:sta (screen_ptr),y \ TODO CMOS
+        iny:sta (screen_ptr),y
+        lda #%00111000
+        iny:sta (screen_ptr),y
+        iny:sta (screen_ptr),y
+        lda #%01111100
+        iny:sta (screen_ptr),y
+        iny:sta (screen_ptr),y
     else
         error "Unknown led_style"
     endif
@@ -245,6 +256,13 @@ else
         ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
         iny:sta (screen_ptr),y
         iny:sta (screen_ptr),y
+        iny:sta (screen_ptr),y
+    elif led_style == 4
+        lda #%00010000
+        ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
+        lda #%00111000
+        iny:sta (screen_ptr),y
+        lda #%01111100
         iny:sta (screen_ptr),y
     else
         error "Unknown led_style"
