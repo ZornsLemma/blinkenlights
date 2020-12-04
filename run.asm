@@ -6,8 +6,16 @@
     equb 0
 .inverse_raster_row
     equb 0
+.ptr
+    equw 0
 .screen_ptr
     equw 0
+.working_index
+    equb 0
+.led_x
+    equb 0
+.led_y
+    equb 0
 
 
     org &2000
@@ -68,6 +76,79 @@ macro advance_to_next_led
 endmacro
 
 .start
+
+{
+    \ Set up the LEDs based on the panel template.
+
+    \ The first two bytes of the template are the number of LEDs; we need to set up
+    \ the per-frame initialisation accordingly, and if we don't have an exact
+    \ multiple of 256 LEDs we need to take that into account by starting with X>0.
+    lda panel_template+1:sta lda_imm_led_groups+1
+    lda panel_template:beq exact_multiple
+    inc lda_imm_led_groups+1
+    lda #0:sec:sbc panel_template
+.exact_multiple
+    sta lda_imm_initial_x+1:sta working_index
+    \ TODO PROB WANT TO PUT A INTO X OR SOMETHING FOR FOLLOWING CODE TO WORK WITH
+
+    lda #hi(inverse_row_table):sta SFTODOPATCHME1+2
+    lda #hi(address_low_table):sta SFTODOPATCHME2+2
+    lda #hi(address_high_table):sta SFTODOPATCHME3+2
+
+    lda #lo(panel_template+2):sta ptr \ TODO RENAME ptr TO template_ptr OR SIMILAR
+    lda #hi(panel_template+2):sta ptr+1
+    \ TODO: I NEED TO APPLY THE 1 OR 2 OFFSET TO SCREEN_PTR HERE DEPENDING ON LED SIZE
+    lda #0:sta led_x:sta led_y
+if big_leds
+    lda #1
+else
+    lda #2
+endif
+    sta screen_ptr
+    lda #&58:sta screen_ptr+1
+    \ TODO WE NEED TO SET UP inverse_row_table, address_{low,high}_table - OTHER TABLES CAN SAFELY BE OVER-FILLED
+.SFTODOLOOP
+    ldy #0:lda (ptr),y
+    ldx #8
+.SFTODOLOOP2
+    asl a
+    pha \ TODO PROB EASIER JUST TO USE A ZP LOC INSTEAD OF A FOR THE SHIFTING
+    bcc empty
+    ldy working_index
+    lda #32:sec:sbc led_y
+.SFTODOPATCHME1
+    sta &ff00,y \ patched
+    lda screen_ptr
+.SFTODOPATCHME2
+    sta &ff00,y \ patched
+    lda screen_ptr+1
+.SFTODOPATCHME3
+    sta &ff00,y \ patched
+    inc working_index
+    bne not_next_led_group
+    inc SFTODOPATCHME1+2
+    inc SFTODOPATCHME2+2
+    inc SFTODOPATCHME3+2
+.not_next_led_group
+.empty
+    lda screen_ptr:clc:adc #8:sta screen_ptr:bcc no_carry2
+    inc screen_ptr+1
+.no_carry2
+    inc led_x
+    pla
+    dex:bne SFTODOLOOP2
+    inc ptr:bne no_carry
+    inc ptr+1
+.no_carry
+    lda led_x:cmp #40:bne SFTODOLOOP
+    lda #0:sta led_x
+    inc led_y
+    lda led_y:cmp #32:bne SFTODOLOOP
+
+
+
+}
+
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
     scanline_to_interrupt_at = -2
     vsync_position = 35
@@ -109,7 +190,9 @@ endmacro
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
+.lda_imm_led_groups
     lda #5:sta led_group_count \ TODO: SHOULD BE 5
+.lda_imm_initial_x
     ldx #0
 
     ; The idea here is that if we took less than 1/50th second to process the
@@ -418,6 +501,9 @@ endmacro
     for i, 0, led_count-1
         equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
     next
+
+.panel_template
+    incbin "circle-32.bin"
 
 .end
 

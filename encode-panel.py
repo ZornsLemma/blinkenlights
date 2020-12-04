@@ -9,7 +9,7 @@ bitmap = []
 for y in range(32):
     for x in range(0, 40, 8):
         b = 0
-        for x2 in range(7, -1, -1):
+        for x2 in range(8):
             p = im.getpixel((x+x2, y))
             assert p in (0, 1)
             if p == 1:
