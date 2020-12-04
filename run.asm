@@ -19,9 +19,9 @@
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
-    big_leds = FALSE
+    big_leds = TRUE
     \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
-    led_style = 4 \ 0=circular, 1=diamond, 2=rectangular, 3=square, 4=triangular
+    led_style = 3 \ 0=circular, 1=diamond, 2=rectangular, 3=square, 4=triangular
     if big_leds
         led_start_line = 1
         led_max_line = 5
@@ -101,8 +101,8 @@ endmacro
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
-    lda #hi(address_low_table):sta lda_address_low_x_1+2
-    lda #hi(address_high_table):sta lda_address_high_x_1+2
+    lda #hi(address_low_table):sta lda_address_low_x+2
+    lda #hi(address_high_table):sta lda_address_high_x+2
     lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     \ Reset X and led_group_count.
@@ -159,10 +159,10 @@ endif
 .sta_count_x_2
     sta $ff00,x \ patched
     \ Toggle the LED's state.
-.lda_address_low_x_1 \ TODO: _1 suffix now redundant
+.lda_address_low_x
     lda $ff00,x \ patched
     sta screen_ptr
-.lda_address_high_x_1 \ TODO: _1 suffix now redundant
+.lda_address_high_x
     lda $ff00,x \ patched
     sta screen_ptr+1
     ; We're about to modify screen memory, so if the raster is currently on this
@@ -291,8 +291,8 @@ endif
     inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
     inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
-    inc lda_address_low_x_1+2
-    inc lda_address_high_x_1+2
+    inc lda_address_low_x+2
+    inc lda_address_high_x+2
     inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
     jmp led_loop
