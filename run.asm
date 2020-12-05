@@ -21,7 +21,11 @@
     org &2000
     guard &5800
 
-    led_count = 40*32
+    mode_7_screen = &7c00
+    mode_7_width = 40
+    panel_width = 40
+    panel_height = 32
+    led_count = panel_width*panel_height
     ticks_per_frame = 8
     show_missed_vsync = FALSE
     show_rows = FALSE
@@ -457,6 +461,7 @@ endif
 }
 
 \ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
+\ Display the panel template at YX using mode 7 graphics at panel_template_top_left_[xy].
 .show_panel_template
 {
 \ TODO: WE SHOULD HAVE A GENERAL "TMP ZP" AREA AND USE THAT, RATHER THAN PRE-ALLOCATING *BASED* ON THE FLASHING CODE
@@ -465,25 +470,31 @@ template_rows_left = inverse_raster_row \ TODO HACK
 sixel_inverse_row = frame_count \ TODO HACK
 x_group_count = led_group_count \ TODO HACK
 
+sixel_width = 2
+sixel_height = 3
+width_chars = panel_width/sixel_width
+x_group_chars = 4
+x_groups = width_chars / x_group_chars
+
     \ SFTODO: WAIT FOR VSYNC?
     \ SFTODO: DO I NEED TO DO ANYHTHING TO BLANK OUT ANYTHING ALREADY THERE?
     \ Skip the count of LEDs at the start of the panel template.
     txa:clc:adc #2:sta ptr
     tya:adc #0:sta ptr+1
-    screen_address_top_left = &7c00 + panel_template_top_left_y*40 + panel_template_top_left_x
+    screen_address_top_left = mode_7_screen + panel_template_top_left_y*mode_7_width + panel_template_top_left_x
     lda #lo(screen_address_top_left):sta screen_ptr
     lda #hi(screen_address_top_left):sta screen_ptr+1
-    lda #32:sta template_rows_left
+    lda #panel_height:sta template_rows_left
 .template_row_loop
-    lda #2:sta sixel_inverse_row
+    lda #sixel_height-1:sta sixel_inverse_row
 .sixel_row_loop
-    lda #((40/2)/4)-1:sta x_group_count
+    lda #x_groups-1:sta x_group_count
     lda sixel_inverse_row:asl a:asl a
     clc:adc #lo(pixel_to_sixel_row_table):sta lda_pixel_to_sixel_row_table_y+1
     lda #hi(pixel_to_sixel_row_table):adc #0:sta lda_pixel_to_sixel_row_table_y+2
 .x_group_loop
     ldy #0:lda (ptr),y:sta pixel_bitmap
-    ldx #3
+    ldx #x_group_chars-1
 .sixel_for_x_group_loop
     lda #0
     asl pixel_bitmap:rol a
@@ -497,10 +508,10 @@ x_group_count = led_group_count \ TODO HACK
     inc_word ptr
     dec x_group_count:bpl x_group_loop
     dec template_rows_left:beq done
-    sec:lda screen_ptr:sbc #40/2:sta screen_ptr
+    sec:lda screen_ptr:sbc #width_chars:sta screen_ptr
     bcs no_borrow:dec screen_ptr+1:.no_borrow
     dec sixel_inverse_row:bpl sixel_row_loop
-    clc:lda screen_ptr:adc #40:sta screen_ptr
+    clc:lda screen_ptr:adc #mode_7_width:sta screen_ptr
     bcc no_carry:inc screen_ptr+1:.no_carry
     jmp template_row_loop
 .done
