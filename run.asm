@@ -92,7 +92,7 @@ endmacro
     lda #22:jsr &ffee:lda #7:jsr &ffee
     ldy #24
 .loop
-    lda #145:jsr &ffee:jsr &ffe7
+    lda #145:jsr &ffee:lda #154:jsr &ffee:jsr &ffe7
     dey:bne loop
     ldx #lo(panel_template):ldy #hi(panel_template):jsr show_panel_template
 .HANG JMP HANG
@@ -459,7 +459,8 @@ endif
 \ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
 .show_panel_template
 {
-SFTODO = working_index \ TODO HACK
+\ TODO: WE SHOULD HAVE A GENERAL "TMP ZP" AREA AND USE THAT, RATHER THAN PRE-ALLOCATING *BASED* ON THE FLASHING CODE
+pixel_bitmap = working_index \ TODO HACK
 template_rows_left = inverse_raster_row \ TODO HACK
 sixel_inverse_row = frame_count \ TODO HACK
 x_group_count = led_group_count \ TODO HACK
@@ -469,7 +470,6 @@ x_group_count = led_group_count \ TODO HACK
     \ Skip the count of LEDs at the start of the panel template.
     txa:clc:adc #2:sta ptr
     tya:adc #0:sta ptr+1
-
     screen_address_top_left = &7c00 + panel_template_top_left_y*40 + panel_template_top_left_x
     lda #lo(screen_address_top_left):sta screen_ptr
     lda #hi(screen_address_top_left):sta screen_ptr+1
@@ -478,17 +478,18 @@ x_group_count = led_group_count \ TODO HACK
     lda #2:sta sixel_inverse_row
 .sixel_row_loop
     lda #((40/2)/4)-1:sta x_group_count
-    lda sixel_inverse_row:asl a:asl a:clc:adc #lo(SFTODOTABLE):sta SFTODORENAMEMEPATCH+1
-    lda #hi(SFTODOTABLE):adc #0:sta SFTODORENAMEMEPATCH+2
+    lda sixel_inverse_row:asl a:asl a
+    clc:adc #lo(pixel_to_sixel_row_table):sta lda_pixel_to_sixel_row_table_y+1
+    lda #hi(pixel_to_sixel_row_table):adc #0:sta lda_pixel_to_sixel_row_table_y+2
 .x_group_loop
-    ldy #0:lda (ptr),y:sta SFTODO
+    ldy #0:lda (ptr),y:sta pixel_bitmap
     ldx #3
 .sixel_for_x_group_loop
     lda #0
-    asl SFTODO:rol a
-    asl SFTODO:rol a
+    asl pixel_bitmap:rol a
+    asl pixel_bitmap:rol a
     tay
-.SFTODORENAMEMEPATCH
+.lda_pixel_to_sixel_row_table_y
     lda $ffff,y \ patched
     ldy #0:ora (screen_ptr),y:sta (screen_ptr),y
     inc_word screen_ptr
@@ -505,7 +506,7 @@ x_group_count = led_group_count \ TODO HACK
 .done
     rts
 
-.SFTODOTABLE
+.pixel_to_sixel_row_table
     \ Bottom row of sixel
     \ Sixel value    pixels
     equb %10100000 \ %00
