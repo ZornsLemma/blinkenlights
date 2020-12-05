@@ -38,6 +38,9 @@
         led_max_line = 3
     endif
 
+    panel_template_top_left_x = 3
+    panel_template_top_left_y = 10
+
     irq1v = &204
 
     ula_palette = &fe21
@@ -75,7 +78,26 @@ macro advance_to_next_led
     beq advance_to_next_led_group \ always branch
 endmacro
 
+\ TODO: Use this everywhere useful
+macro inc_word x
+    inc x
+    bcc no_carry
+    inc x+1
+.no_carry
+endmacro
+
 .start
+\ START TEMP HACK
+{
+    lda #22:jsr &ffee:lda #7:jsr &ffee
+    ldy #24
+.loop
+    lda #145:jsr &ffee:jsr &ffe7
+    dey:bne loop
+    ldx #lo(panel_template):ldy #hi(panel_template):jsr show_panel_template
+.HANG JMP HANG
+}
+\ END TEMP HACk
 
 {
     \ Set up the LEDs based on the panel template.
@@ -433,6 +455,77 @@ endif
 .return_to_os_hack
     pla:sta &fc:rti
 }
+
+\ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
+.show_panel_template
+{
+SFTODO = working_index \ TODO HACK
+template_rows_left = inverse_raster_row \ TODO HACK
+sixel_inverse_row = frame_count \ TODO HACK
+x_group_count = led_group_count \ TODO HACK
+
+    \ SFTODO: WAIT FOR VSYNC?
+    \ SFTODO: DO I NEED TO DO ANYHTHING TO BLANK OUT ANYTHING ALREADY THERE?
+    \ Skip the count of LEDs at the start of the panel template.
+    txa:clc:adc #2:sta ptr
+    tya:adc #0:sta ptr+1
+
+    screen_address_top_left = &7c00 + panel_template_top_left_y*40 + panel_template_top_left_x
+    lda #lo(screen_address_top_left):sta screen_ptr
+    lda #hi(screen_address_top_left):sta screen_ptr+1
+    lda #32:sta template_rows_left
+.template_row_loop
+    lda #2:sta sixel_inverse_row
+.sixel_row_loop
+    lda #((40/2)/4)-1:sta x_group_count
+    lda sixel_inverse_row:asl a:asl a:clc:adc #lo(SFTODOTABLE):sta SFTODORENAMEMEPATCH+1
+    lda #hi(SFTODOTABLE):adc #0:sta SFTODORENAMEMEPATCH+2
+.x_group_loop
+    ldy #0:lda (ptr),y:sta SFTODO
+    ldx #3
+.sixel_for_x_group_loop
+    lda #0
+    asl SFTODO:rol a
+    asl SFTODO:rol a
+    tay
+.SFTODORENAMEMEPATCH
+    lda $ffff,y \ patched
+    ldy #0:ora (screen_ptr),y:sta (screen_ptr),y
+    inc_word screen_ptr
+    dex:bpl sixel_for_x_group_loop
+    inc_word ptr
+    dec x_group_count:bpl x_group_loop
+    dec template_rows_left:beq done
+    sec:lda screen_ptr:sbc #40/2:sta screen_ptr
+    bcs no_borrow:dec screen_ptr+1:.no_borrow
+    dec sixel_inverse_row:bpl sixel_row_loop
+    clc:lda screen_ptr:adc #40:sta screen_ptr
+    bcc no_carry:inc screen_ptr+1:.no_carry
+    jmp template_row_loop
+.done
+    rts
+
+.SFTODOTABLE
+    \ Bottom row of sixel
+    \ Sixel value    pixels
+    equb %10100000 \ %00
+    equb %11100000 \ %01
+    equb %10110000 \ %10
+    equb %11110000 \ %11
+    \ Middle row of sixel
+    \ Sixel value    pixels
+    equb %10100000 \ %00
+    equb %10101000 \ %01
+    equb %10100100 \ %10
+    equb %10101100 \ %11
+    \ Top row of sixel
+    \ Sixel value    pixels
+    equb %10100000 \ %00
+    equb %10100010 \ %01
+    equb %10100001 \ %10
+    equb %10100011 \ %11
+}
+\ TODO: Standardise on & vs $ for hex - probably &
      
 
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
