@@ -81,7 +81,7 @@ endmacro
 \ TODO: Use this everywhere useful
 macro inc_word x
     inc x
-    bcc no_carry
+    bne no_carry
     inc x+1
 .no_carry
 endmacro
