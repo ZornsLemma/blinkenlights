@@ -82,7 +82,6 @@ macro advance_to_next_led
     beq advance_to_next_led_group \ always branch
 endmacro
 
-\ TODO: Use this everywhere useful
 macro inc_word x
     inc x
     bne no_carry
@@ -90,7 +89,14 @@ macro inc_word x
 .no_carry
 endmacro
 
+macro inc_word_high x
+    bcc no_carry
+    inc x
+.no_carry
+endmacro
+
 .start
+if FALSE
 \ START TEMP HACK
 {
     lda #22:jsr &ffee:lda #7:jsr &ffee
@@ -102,6 +108,7 @@ endmacro
 .HANG JMP HANG
 }
 \ END TEMP HACk
+endif
 
 {
     \ Set up the LEDs based on the panel template.
@@ -157,15 +164,12 @@ endif
     inc SFTODOPATCHME3+2
 .not_next_led_group
 .empty
-    lda screen_ptr:clc:adc #8:sta screen_ptr:bcc no_carry2
-    inc screen_ptr+1
-.no_carry2
+    lda screen_ptr:clc:adc #8:sta screen_ptr
+    inc_word_high screen_ptr+1
     inc led_x
     pla
     dex:bne SFTODOLOOP2
-    inc ptr:bne no_carry
-    inc ptr+1
-.no_carry
+    inc_word ptr
     lda led_x:cmp #40:bne SFTODOLOOP
     lda #0:sta led_x
     inc led_y
@@ -470,6 +474,7 @@ template_rows_left = inverse_raster_row \ TODO HACK
 sixel_inverse_row = frame_count \ TODO HACK
 x_group_count = led_group_count \ TODO HACK
 
+\ TODO: Not too happy with some of these names
 sixel_width = 2
 sixel_height = 3
 width_chars = panel_width/sixel_width
@@ -512,7 +517,7 @@ x_groups = width_chars / x_group_chars
     bcs no_borrow:dec screen_ptr+1:.no_borrow
     dec sixel_inverse_row:bpl sixel_row_loop
     clc:lda screen_ptr:adc #mode_7_width:sta screen_ptr
-    bcc no_carry:inc screen_ptr+1:.no_carry
+    inc_word_high screen_ptr+1
     jmp template_row_loop
 .done
     rts
