@@ -1,3 +1,4 @@
+include "macros.asm"
 include "constants.asm"
 
     org &70
@@ -23,7 +24,6 @@ include "constants.asm"
     org &2000
     guard &5800
 
-    mode_7_width = 40
     panel_width = 40
     panel_height = 32
     led_count = panel_width*panel_height

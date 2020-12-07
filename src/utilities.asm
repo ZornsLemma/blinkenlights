@@ -27,7 +27,6 @@ eot = 128
     lda ptr:pha
     rts
 }
-.TODO1 jmp TODO1
 
 ; Print the string at YX (terminated by eot) using OSWRCH.
 .print_string_yx
