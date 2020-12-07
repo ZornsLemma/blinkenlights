@@ -12,6 +12,21 @@ eot = 128
 ; Print the string following "jsr print_string_inline" (terminate by eot) using
 ; OSWRCH.
 .print_string_inline
+{
+    pla:sta ptr
+    pla:sta ptr+1
+    ldy #0
+.loop
+    inc_word ptr
+    lda (ptr),y
+    cmp #eot:beq done
+    jsr oswrch
+    jmp loop
+.done
+    lda ptr+1:pha
+    lda ptr:pha
+    rts
+}
 .TODO1 jmp TODO1
 
 ; Print the string at YX (terminated by eot) using OSWRCH.
