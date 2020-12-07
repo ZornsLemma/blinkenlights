@@ -1,3 +1,5 @@
+include "constants.asm"
+
     org &70
     guard &90
 .led_group_count
@@ -21,7 +23,6 @@
     org &2000
     guard &5800
 
-    mode_7_screen = &7c00
     mode_7_width = 40
     panel_width = 40
     panel_height = 32
@@ -96,6 +97,7 @@ macro inc_word_high x
 endmacro
 
 .start
+include "menu.asm"
 if FALSE
 \ START TEMP HACK
 {
@@ -543,6 +545,8 @@ x_groups = width_chars / x_group_chars
     equb %10100011 \ %11
 }
 \ TODO: Standardise on & vs $ for hex - probably &
+
+include "utilities.asm"
      
 
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
@@ -613,7 +617,7 @@ endmacro
     next
 
 .panel_template
-    incbin "../panels/circle-32.bin"
+    incbin "../res/circle-32.bin"
 
 .end
 
