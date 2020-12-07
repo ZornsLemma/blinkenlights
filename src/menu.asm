@@ -15,18 +15,28 @@
     }
 
     ; TODO: SEMI-EXPERIMENTAL
-    jsr show_led_colour
+.SFTODOHACK8
+    jsr show_panel_colour
+    lda option_panel_colour:clc:adc #1:and #7:sta option_panel_colour
+    lda #50:sta &70
+.SFTODOHACK8B
+    lda #19:jsr osbyte
+    dec &70
+    bne SFTODOHACK8B
+    beq SFTODOHACK8
 
 .input_loop
     lda #osbyte_flush_buffer:ldx #buffer_keyboard:jsr osbyte
     jsr osrdch
     jmp input_loop
 
-.show_led_colour
-    lda option_led_colour:ldyx_mode7 11, 6
+.show_panel_colour
+    lda option_panel_colour:ldyx_mode7 25, 6
     fall_through_to show_colour
 
 ; Display a colour swatch for colour A at screen memory address YX.
+; TODO: De-subroutine this if it's only used in one place?
+; TODO: Use oswrch here instead of direct screen access?
 .show_colour
 {
     ; TODO: Wait for vsync?
@@ -48,11 +58,19 @@
     rts
 
 .black
-.TODOHACK2 JMP TODOHACK2
+    lda #mode_7_graphics_colour_base+7:ldy #0:sta (ptr),y
+    lda #183:iny:sta (ptr),y
+    lda #163:iny:sta (ptr),y
+    lda #181:iny:sta (ptr),y
+    lda #mode_7_graphics_colour_base+7:ldy #40:sta (ptr),y
+    lda #173:iny:sta (ptr),y
+    lda #172:iny:sta (ptr),y
+    lda #165:iny:sta (ptr),y
+    rts
 }
 
-.option_led_colour
-    equb 1
+.option_panel_colour
+    equb 0
 
 .menu_template
     incbin "../res/menu-template.bin"
