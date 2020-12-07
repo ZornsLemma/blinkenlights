@@ -613,7 +613,7 @@ endmacro
     next
 
 .panel_template
-    incbin "circle-32.bin"
+    incbin "../panels/circle-32.bin"
 
 .end
 
