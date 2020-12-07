@@ -1,4 +1,9 @@
 {
+    ; TODO: PROPER ALLOCATION OF ZERO PAGE
+    src = ptr
+    dest = screen_ptr
+    toggle = working_index
+  
     ; TODO: I probably need to remove the "variable" elements from the template, to avoid
     ; them briefly flickering into view before we update them after copying the template.
     lda #7:jsr set_mode
@@ -16,7 +21,9 @@
 
     ; TODO: SEMI-EXPERIMENTAL
 .SFTODOHACK8
+    jsr show_led_options
     jsr show_panel_colour
+    lda option_led_colour:clc:adc #1:and #7:sta option_led_colour
     lda option_panel_colour:clc:adc #1:and #7:sta option_panel_colour
     lda #50:sta &70
 .SFTODOHACK8B
@@ -31,7 +38,7 @@
     jmp input_loop
 
 .show_panel_colour
-    lda option_panel_colour:ldyx_mode7 25, 6
+    lda option_panel_colour:ldyx_mode_7 25, 6 \ TODO: MOVE MAGIC CONSTANTS TO NAMED CONSTANTS AT TOP?
     fall_through_to show_colour
 
 ; Display a colour swatch for colour A at screen memory address YX.
@@ -40,35 +47,79 @@
 .show_colour
 {
     ; TODO: Wait for vsync?
-    stx ptr:sty ptr+1
+    stx dest:sty dest+1
     tax:beq black
     clc:adc #mode_7_graphics_colour_base:pha
-    ldy #0:sta (ptr),y
+    ldy #0:sta (dest),y
     lda #255
-    iny:sta (ptr),y
-    iny:sta (ptr),y
+    iny:sta (dest),y
+    iny:sta (dest),y
     lda #181
-    iny:sta (ptr),y
-    ldy #40:pla:sta (ptr),y
+    iny:sta (dest),y
+    ldy #40:pla:sta (dest),y
     lda #175
-    iny:sta (ptr),y
-    iny:sta (ptr),y
+    iny:sta (dest),y
+    iny:sta (dest),y
     lda #165
-    iny:sta (ptr),y
+    iny:sta (dest),y
     rts
 
 .black
-    lda #mode_7_graphics_colour_base+7:ldy #0:sta (ptr),y
-    lda #183:iny:sta (ptr),y
-    lda #163:iny:sta (ptr),y
-    lda #181:iny:sta (ptr),y
-    lda #mode_7_graphics_colour_base+7:ldy #40:sta (ptr),y
-    lda #173:iny:sta (ptr),y
-    lda #172:iny:sta (ptr),y
-    lda #165:iny:sta (ptr),y
+    lda #mode_7_graphics_colour_base+7:ldy #0:sta (dest),y
+    lda #183:iny:sta (dest),y
+    lda #163:iny:sta (dest),y
+    lda #181:iny:sta (dest),y
+    lda #mode_7_graphics_colour_base+7:ldy #40:sta (dest),y
+    lda #173:iny:sta (dest),y
+    lda #172:iny:sta (dest),y
+    lda #165:iny:sta (dest),y
     rts
 }
 
+; Update the LED image in the menu to reflect the colour, shape and size
+; options.
+.show_led_options
+{
+    ; TODO: WAIT FOR VSYNC? OR MAYBE OUR CALLER SHOULD DO IT SO INITIAL UPDATE DOESN'T REQUIRE MULTIPLE FRAMES?
+    ldyx_mode_7 10,6 \ TODO: MAGIC CONSTANTS - POSS OK IF NOT DUPLICATED ELSEWHERE
+    stx dest:sty dest+1
+    ldx #0:lda option_led_colour:bne not_black
+    ldx #255:lda #colour_white
+.not_black
+    stx toggle
+    clc:adc #mode_7_graphics_colour_base
+    ldy #0:sta (dest),y
+    ldy #40:sta (dest),y
+    ldy #80:sta (dest),y
+    inc_word dest
+    lda option_led_shape:asl a:clc:adc option_led_size:asl a:asl a:asl a
+    clc:adc #lo(mode_7_led_bitmap_base):sta src
+    lda #hi(mode_7_led_bitmap_base):adc #0:sta src+1
+    ldx #2
+.line_loop
+    ldy #3
+.character_loop
+    lda (src),y:eor toggle:sta (dest),y
+    dey:bpl character_loop
+    clc:lda src:adc #4:sta src:inc_word_high src+1
+    clc:lda dest:adc #mode_7_width:sta dest:inc_word_high dest+1
+    dex:bpl line_loop
+    rts
+
+.mode_7_led_bitmap_base
+; Shape 0
+    equb 255,255,255,255
+    equb 255,255,255,255
+    equb 255,255,255,255
+}
+
+
+.option_led_colour
+    equb colour_red
+.option_led_shape
+    equb 0
+.option_led_size
+    equb 0
 .option_panel_colour
     equb 0
 
