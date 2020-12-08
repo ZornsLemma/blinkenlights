@@ -31,8 +31,28 @@ def decode_edittf_url(url):
     # this automatically.
     return unpacked_data
 
-with open(sys.argv[1], "r") as f:
+args = sys.argv[:]
+led = args[1] == "--led"
+if led:
+    args[1:] = args[2:]
+
+with open(args[1], "r") as f:
     encoded = f.readline()
 
-with open(sys.argv[2], "wb") as f:
-    f.write(decode_edittf_url(encoded))
+decoded = decode_edittf_url(encoded)
+if not led:
+    with open(args[2], "wb") as f:
+        f.write(decoded)
+else:
+    with open(args[2], "w") as f:
+        for y in range(5):
+            for x in range(2):
+                f.write("    ; Shape %d, %s\n" % (y, "large" if x == 0 else "small"))
+                for yo in range(3):
+                    for xo in range(4):
+                        cx = 2 + x*5 + xo
+                        cy = 1 + y*4 + yo
+                        i = cy*40 + cx
+                        f.write("    equb &%02x\n" % decoded[i])
+                for i in range(4):
+                    f.write("    equb &00 ; padding\n")

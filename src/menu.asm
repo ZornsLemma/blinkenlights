@@ -25,6 +25,14 @@
     jsr show_panel_colour
     lda option_led_colour:clc:adc #1:and #7:sta option_led_colour
     lda option_panel_colour:clc:adc #1:and #7:sta option_panel_colour
+    lda option_led_colour:bne SFTODO91
+    lda option_led_size:eor #1:sta option_led_size
+    bne SFTODO91
+    lda option_led_shape:clc:adc #1:cmp #5:bne SFTODO99
+    lda #0
+.SFTODO99
+    sta option_led_shape
+.SFTODO91
     lda #50:sta &70
 .SFTODOHACK8B
     lda #19:jsr osbyte
@@ -84,7 +92,7 @@
     ldyx_mode_7 10,6 \ TODO: MAGIC CONSTANTS - POSS OK IF NOT DUPLICATED ELSEWHERE
     stx dest:sty dest+1
     ldx #0:lda option_led_colour:bne not_black
-    ldx #255:lda #colour_white
+    ldx #%01011111:lda #colour_white
 .not_black
     stx toggle
     clc:adc #mode_7_graphics_colour_base
@@ -92,7 +100,7 @@
     ldy #40:sta (dest),y
     ldy #80:sta (dest),y
     inc_word dest
-    lda option_led_shape:asl a:clc:adc option_led_size:asl a:asl a:asl a
+    lda option_led_shape:asl a:clc:adc option_led_size:asl a:asl a:asl a:asl a
     clc:adc #lo(mode_7_led_bitmap_base):sta src
     lda #hi(mode_7_led_bitmap_base):adc #0:sta src+1
     ldx #2
@@ -106,13 +114,7 @@
     dex:bpl line_loop
     rts
 
-.mode_7_led_bitmap_base
-; Shape 0
-    equb 255,255,255,255
-    equb 255,255,255,255
-    equb 255,255,255,255
 }
-
 
 .option_led_colour
     equb colour_red
@@ -126,3 +128,6 @@
 .menu_template
     incbin "../res/menu-template.bin"
 }
+
+.mode_7_led_bitmap_base
+include "../res/menu-led-template.asm"
