@@ -124,12 +124,23 @@ if FALSE
 \ END TEMP HACk
 endif
 
+; SFTODO: MOVE THIS!
+.led_shape_SFTODO
+    equb %00111100, 0, 5, 128
+    equb %01111110, 1, 2, 3, 4, 128
+    equb 0
+
 \ TODO NEED TO MOVE ALL THIS CODE OUT OF TOP.ASM INTO ANIMATION.ASM OR SIMILAR
 .start_animation
 {
+    \ Select mode 4 and set the foreground and background colours.
     lda #4:jsr set_mode
     ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
     ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
+
+    ; Compile code to poke the selected LED bitmap into screen RAM.
+    ; TODO: NEEDS TWEAKING TO BE GENUINELY DYNAMIC
+    ldx #lo(led_shape_SFTODO):ldy #hi(led_shape_SFTODO):jsr compile_led_shape
 
     \ Set up the LEDs based on the panel template.
     \ TODO: RENAME PTR TO TEMPLATE_PTR OR SOMETHING?
@@ -320,6 +331,14 @@ endif
     sta $ff00,x \ patched
     beq turn_led_off
 
+    ; compile_led_shape generates code at runtime here
+.turn_led_on_start
+    brk
+    equs 0, "No LED!", 0
+    skip 32 ; TODO: MAGIC CONSTANT
+.turn_led_on_end
+
+if FALSE ; TODO DELETE
     \ Turn this LED on.
     \ TIME: This takes 2+2*(2+6)+2+4*(2+6)=52 cycles (for big LEDs)
     \ TODO: We could offer other LED shapes, e.g. diamond, rectangular
@@ -404,6 +423,7 @@ else
     endif
 endif
     advance_to_next_led
+endif
 
 .turn_led_off
     \ Turn this LED off.
@@ -575,6 +595,11 @@ x_groups = width_chars / x_group_chars
 ; TODO: THIS SHOULD TAKE ADVANTAGE OF CMOS INSTRUCTIONS IF AVAILABLE
 .compile_led_shape
 {
+; TODO: PROPER ZP ALLOCATION
+    src = ptr
+    dest = screen_ptr
+    runtime_y = working_index
+   
     stx src:sty src+1
     lda #lo(turn_led_on_start):sta dest
     lda #hi(turn_led_on_start):sta dest+1
@@ -609,25 +634,25 @@ x_groups = width_chars / x_group_chars
     jsr emit
 .y_set
     ; Y is now set, so emit "sta (screen_ptr),y".
-    lda #opcode_sta_zp_y:jsr emit
+    lda #opcode_sta_zp_ind_y:jsr emit
     lda #screen_ptr:jsr emit
     jmp line_loop
 .line_loop_done
-    inc_word_src
+    inc_word src
     jmp bitmap_loop
 .done
 
     ; Emit code equivalent to our "advance_to_next_led" macro.
     lda #opcode_inx:jsr emit
     lda #opcode_bne:jsr emit
-    sec:lda dest_ptr:sbc #lo(led_loop-1):jsr emit
+    sec:lda #lo(led_loop-1):sbc dest:jsr emit
     lda #opcode_beq:jsr emit
-    sec:lda #lo(advance_to_next_led_group-1):sbc dest_ptr:jsr emit
+    sec:lda #lo(advance_to_next_led_group-1):sbc dest:jsr emit
 
     ; Check we haven't overflowed the available space; we have iff
-    ; turn_led_on_end < dest_ptr.
-    lda #hi(turn_led_on_end):cmp dest_ptr+1:bne use_high_byte_result
-    lda #lo(turn_led_on_end):cmp dest_ptr
+    ; turn_led_on_end < dest.
+    lda #hi(turn_led_on_end):cmp dest+1:bne use_high_byte_result
+    lda #lo(turn_led_on_end):cmp dest
 .use_high_byte_result
     bcs not_overflowed
     brk

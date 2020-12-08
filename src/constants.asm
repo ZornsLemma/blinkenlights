@@ -30,3 +30,12 @@ osrdch = &ffe0
 oswrch = &ffee
 osbyte = &fff4
 oscli  = &fff7
+
+opcode_dey = &88
+opcode_ldy_imm = &a0
+opcode_lda_imm = &a9
+opcode_sta_zp_ind_y = &91
+opcode_iny = &c8
+opcode_bne = &d0
+opcode_inx = &e8
+opcode_beq = &f0
