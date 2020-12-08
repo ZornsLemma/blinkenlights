@@ -101,7 +101,7 @@ endmacro
 .start
     ; Refuse to run on a second processor. (Because we want to re-enter this
     ; code using CALL on BREAK via *KEY10, we can't just set our load/exec
-    ; addresses to force executing in the host.)
+    ; addresses to force execution in the host.)
     lda #osbyte_read_high_order_address:jsr osbyte
     inx:bne tube
     iny:beq not_tube
@@ -708,6 +708,7 @@ include "utilities.asm"
     \ random set of frequencies each time.
     randomize 42
 
+    ; TODO: ALL OF THESE TABLES CAN BE MOVED AFTER ".end" AND THEREFORE WON'T TAKE UP SPACE ON DISC OR TAKE TIME TO LOAD FROM DISC - BUT AM WAITING UNTIL I PROGRAMATICALLY POPULATE period_table BEFORE MAKING THIS CHANGE
     align &100
 .count_table
     skip led_count ; TODO: rename this max_led_count?
