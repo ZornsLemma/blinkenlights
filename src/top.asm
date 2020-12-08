@@ -617,8 +617,17 @@ x_groups = width_chars / x_group_chars
 .line_loop
     inc_word src
     ldy #0:lda (src),y:bmi line_loop_done
-    ; A now contains the scanline index, held in Y at runtime. Can we get to it
-    ; using iny or dey? (This is no faster than "ldy #n", but it's shorter.)
+    ; A now contains the scanline index, held in Y at runtime.
+    ldx is_65c02:beq not_65c02_line_0
+    tax:bne not_65c02_line_0
+    ; We're on a 65C02 and we're modifying scanline 0, so we can use the
+    ; zp indirect addressing mode.
+    lda #opcode_sta_zp_ind:jsr emit
+    lda #screen_ptr:jsr emit
+    jmp line_loop
+.not_65c02_line_0
+    ; Can we get set Y appropriately using iny or dey? (This is no faster than
+    ; "ldy #n", but it's shorter.)
     inc runtime_y:cmp runtime_y:beq emit_iny
     dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
     ; No, we can't, so emit "ldy #n".
@@ -664,6 +673,8 @@ x_groups = width_chars / x_group_chars
     ldy #0:sta (dest),y
     inc_word dest
     rts
+
+.is_65c02 equb 1 ; TODO: SHOULD AUTO-DETECT AT RUNTIME!
 }
 
 \ TODO: END EXPERIMENTAL
