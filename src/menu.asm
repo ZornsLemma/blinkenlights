@@ -62,7 +62,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     lda input_table+1,y:sta ptr
     lda input_table+2,y:sta ptr+1
     jsr jmp_via_ptr
-    ; Now wait until it's released before continuing with the input loop.
+    ; Now wait until the key is released before continuing with the input loop.
     pla:sta current_index
 .still_down
     ldy current_index:ldx input_table,y
@@ -75,18 +75,42 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 }
 
 .input_table
-    equb keyboard_1:equw input_led_colour
+    equb keyboard_1:equw adjust_led_colour
+    equb keyboard_2:equw adjust_led_shape
+    equb keyboard_3:equw adjust_led_size
+    equb keyboard_7:equw adjust_panel_colour
     equb 0
 
-.input_led_colour
-    ldy #option_led_colour-option_base:jsr adjust_colour
-    ; TODO: WAIT FOR VSYNC
+.adjust_led_colour
+    ldy #option_led_colour-option_base:jsr adjust_option
     jmp show_led_options
 
-.adjust_colour
-    ; TODO: SHIFT HANDLING
-    lda option_base,y:clc:adc #1:and #7:sta option_base,y
+.adjust_led_shape
+    ldy #option_led_shape-option_base:jsr adjust_option
+    jmp show_led_options
+
+.adjust_led_size
+    ldy #option_led_size-option_base:jsr adjust_option
+    jmp show_led_options
+
+.adjust_panel_colour
+    ldy #option_panel_colour-option_base:jsr adjust_option
+    jmp show_panel_colour ; TODO: fall through
+
+; Increment or decrement option Y (depending whether SHIFT is pressed or not),
+; wrapping around at the ends of the range.
+.adjust_option
+{
+    lda #1 ; TODO: SHIFT HANDLING
+    clc:adc option_base,y:bpl not_negative
+    lda option_max,y
+.not_negative
+    cmp option_max,y:bcc not_too_large:beq not_too_large
+    lda #0
+.not_too_large
+    sta option_base,y
     rts
+}
 
 .show_panel_colour
     lda option_panel_colour:ldyx_mode_7 25, 6 \ TODO: MOVE MAGIC CONSTANTS TO NAMED CONSTANTS AT TOP?
@@ -168,6 +192,12 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 0
 .option_panel_colour
     equb 0
+
+.option_max
+    equb 7 ; LED colour
+    equb 4 ; LED shape
+    equb 1 ; LED size
+    equb 7 ; panel colour
 
 .menu_template
     incbin "../res/menu-template.bin"
