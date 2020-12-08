@@ -99,6 +99,17 @@ macro inc_word_high x
 endmacro
 
 .start
+    ; Refuse to run on a second processor. (Because we want to re-enter this
+    ; code using CALL on BREAK via *KEY10, we can't just set our load/exec
+    ; addresses to force executing in the host.)
+    lda #osbyte_read_high_order_address:jsr osbyte
+    inx:bne tube
+    iny:beq not_tube
+.tube
+    brk
+    equs 0, "Please turn off your second processor!", 0
+.not_tube
+
     ; Set up the BREAK key to re-enter this code. (We don't do this in !BOOT
     ; because that would cause a crash if the user pressed BREAK before this
     ; code has loaded.) We could use *FX247 but that would also trap CTRL-BREAK;

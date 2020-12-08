@@ -10,6 +10,7 @@ mode_7_graphics_colour_base = 144
 
 osbyte_flush_buffer = &15
 osbyte_read_key = &81
+osbyte_read_high_order_address = &82
 
 buffer_keyboard = 0
 
