@@ -5,5 +5,6 @@ python decode-teletext.py --led res/menu-led-template.txt res/menu-led-template.
 for x in res/*.png; do
 	python encode-panel.py "$x" "res/$(basename $x .png).bin"
 done
+python encode-led-shapes.py res/led-shapes.asm
 cd src
 beebasm -w -v -i top.asm -do ../blinkenlights.ssd -opt 3 > ../top.lst
