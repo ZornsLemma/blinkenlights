@@ -699,10 +699,9 @@ include "utilities.asm"
 
     align &100
 .count_table
-    for i, 0, led_count-1
-        equb 1
-    next
+    skip led_count ; TODO: rename this max_led_count?
 
+    ; TODO: PERIOD TABLE NEEDS TO BE GENERATED EVERY TIME USING USER'S FREQ CHOICES
 macro pequb x
     assert x >= 0 and x <= 255
     equb x
@@ -736,29 +735,19 @@ endmacro
 
     align &100
 .state_table
-    for i, 0, led_count-1
-        equb 0
-    next
-
-    HACKTODO=0
+    skip led_count
 
     align &100
 .inverse_row_table
-    for i, 0, led_count - 1
-        equb 32 - (i div 40)
-    next
+    skip led_count
 
     align &100
 .address_low_table
-    for i, 0, led_count-1
-        equb lo(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
-    next
+    skip led_count
 
     align &100
 .address_high_table
-    for i, 0, led_count-1
-        equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
-    next
+    skip led_count
 
 ; TODO DELETE .panel_template ; TODO: THIS LABEL IS PROB TEMP NOW, UNTIL I REWORK THE ANIM CODE
 .panel_template_circle_32
