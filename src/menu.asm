@@ -19,6 +19,7 @@
         bne loop
     }
 
+if FALSE
     ; TODO: SEMI-EXPERIMENTAL
 .SFTODOHACK8
     jsr show_led_options
@@ -39,11 +40,53 @@
     dec &70
     bne SFTODOHACK8B
     beq SFTODOHACK8
+else
+    ; TODO WAIT FOR VSYNC?
+    jsr show_led_options
+    jsr show_panel_colour
+endif
 
+    ; Repeatedly check for keys pressed and process them.
 .input_loop
-    lda #osbyte_flush_buffer:ldx #buffer_keyboard:jsr osbyte
-    jsr osrdch
-    jmp input_loop
+{
+current_index = working_index ; TODO PROPER ZP ALLOC
+    lda #-3 and &ff:sta current_index
+.key_loop
+    clc:lda current_index:adc #3:sta current_index
+    tay:ldx input_table,y:beq input_loop
+    lda #osbyte_read_key:ldy #&ff:jsr osbyte
+    inx:bne key_loop
+    ; The key at current_index is pressed; deal with it. We assume this
+    ; corrupts all memory in zero page, so we stack current_index first.
+    lda current_index:pha:tay
+    lda input_table+1,y:sta ptr
+    lda input_table+2,y:sta ptr+1
+    jsr jmp_via_ptr
+    ; Now wait until it's released before continuing with the input loop.
+    pla:sta current_index
+.still_down
+    ldy current_index:ldx input_table,y
+    lda #osbyte_read_key:ldy #&ff:jsr osbyte
+    inx:beq still_down
+    bne key_loop
+
+.jmp_via_ptr
+    jmp (ptr)
+}
+
+.input_table
+    equb keyboard_1:equw input_led_colour
+    equb 0
+
+.input_led_colour
+    ldy #option_led_colour-option_base:jsr adjust_colour
+    ; TODO: WAIT FOR VSYNC
+    jmp show_led_options
+
+.adjust_colour
+    ; TODO: SHIFT HANDLING
+    lda option_base,y:clc:adc #1:and #7:sta option_base,y
+    rts
 
 .show_panel_colour
     lda option_panel_colour:ldyx_mode_7 25, 6 \ TODO: MOVE MAGIC CONSTANTS TO NAMED CONSTANTS AT TOP?
@@ -116,6 +159,7 @@
 
 }
 
+.option_base
 .option_led_colour
     equb colour_red
 .option_led_shape
