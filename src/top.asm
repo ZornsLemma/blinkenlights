@@ -78,6 +78,8 @@ macro advance_to_next_led_fall_through
     bne led_loop
 endmacro
 
+; Note that this macro's body is also generated at runtime by compile_led_shape,
+; so the two must be kept in sync.
 macro advance_to_next_led
     advance_to_next_led_fall_through
     beq advance_to_next_led_group \ always branch
@@ -239,13 +241,11 @@ endif
     lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     \ Reset X and led_group_count.
-    \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
-    \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
-    \ on a multiple of 256.
 .lda_imm_led_groups
-    lda #5:sta led_group_count \ TODO: SHOULD BE 5
+    lda #&ff \ patched
+    sta led_group_count
 .lda_imm_initial_x
-    ldx #0
+    ldx #0 \ patched
 
     ; The idea here is that if we took less than 1/50th second to process the
     ; last update we wait for the next frame to start, but if we took longer we
@@ -569,6 +569,79 @@ x_groups = width_chars / x_group_chars
     equb %10100011 \ %11
 }
 \ TODO: Standardise on & vs $ for hex - probably &
+
+\ TODO: START EXPERIMENTAL
+; TODO: GIVE THIS ITS OWN FILE??
+; TODO: THIS SHOULD TAKE ADVANTAGE OF CMOS INSTRUCTIONS IF AVAILABLE
+.compile_led_shape
+{
+    stx src:sty src+1
+    lda #lo(turn_led_on_start):sta dest
+    lda #hi(turn_led_on_start):sta dest+1
+
+    ; Emit code to store the LED bitmap on the screen.
+    lda #128:sta runtime_y
+.bitmap_loop
+    ; Emit an "lda #bitmap" instruction.
+    ldy #0:lda (src),y:beq done
+    ; TODO: NEXT THREE LINES MIGHT BE WORTH FACTORING OUT INTO SUBROUTINE
+    pha
+    lda #opcode_lda_imm:jsr emit
+    pla:jsr emit
+    ; Loop over the scanlines this bitmap needs to be written to and emit code.
+.line_loop
+    inc_word src
+    ldy #0:lda (src),y:bmi line_loop_done
+    ; A now contains the scanline index, held in Y at runtime. Can we get to it
+    ; using iny or dey? (This is no faster than "ldy #n", but it's shorter.)
+    inc runtime_y:cmp runtime_y:beq emit_iny
+    dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
+    ; No, we can't, so emit "ldy #n".
+    sta runtime_y
+    lda #opcode_ldy_imm:jsr emit
+    lda runtime_y:jsr emit
+    jmp y_set
+.emit_iny
+    lda #opcode_iny:bne emit_iny_dey
+.emit_dey
+    lda #opcode_dey
+.emit_iny_dey
+    jsr emit
+.y_set
+    ; Y is now set, so emit "sta (screen_ptr),y".
+    lda #opcode_sta_zp_y:jsr emit
+    lda #screen_ptr:jsr emit
+    jmp line_loop
+.line_loop_done
+    inc_word_src
+    jmp bitmap_loop
+.done
+
+    ; Emit code equivalent to our "advance_to_next_led" macro.
+    lda #opcode_inx:jsr emit
+    lda #opcode_bne:jsr emit
+    sec:lda dest_ptr:sbc #lo(led_loop-1):jsr emit
+    lda #opcode_beq:jsr emit
+    sec:lda #lo(advance_to_next_led_group-1):sbc dest_ptr:jsr emit
+
+    ; Check we haven't overflowed the available space; we have iff
+    ; turn_led_on_end < dest_ptr.
+    lda #hi(turn_led_on_end):cmp dest_ptr+1:bne use_high_byte_result
+    lda #lo(turn_led_on_end):cmp dest_ptr
+.use_high_byte_result
+    bcs not_overflowed
+    brk
+    equs 0, "Code overflowed!", 0
+.not_overflowed
+    rts
+
+.emit
+    ldy #0:sta (dest),y
+    inc_word dest
+    rts
+}
+
+\ TODO: END EXPERIMENTAL
 
 include "utilities.asm"
      
