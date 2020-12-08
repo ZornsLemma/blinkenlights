@@ -101,7 +101,13 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 ; wrapping around at the ends of the range.
 .adjust_option
 {
-    lda #1 ; TODO: SHIFT HANDLING
+    sty working_index
+    lda #osbyte_read_key:ldx #lo(keyboard_shift):ldy #hi(keyboard_shift):jsr osbyte
+    tya:bne shift_down
+    lda #1
+.shift_down
+    ; A is now -1 or 1 depending on whether SHIFT is pressed or not.
+    ldy working_index
     clc:adc option_base,y:bpl not_negative
     lda option_max,y
 .not_negative
