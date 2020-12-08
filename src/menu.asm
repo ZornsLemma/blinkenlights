@@ -200,6 +200,15 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 .character_loop
     lda (src),y:eor toggle:sta (dest),y
     dey:bpl character_loop
+    ; As a special case, the "diamond" LED shape gets an extra row of pixels at
+    ; the right when it's shown in "reverse video" for black, otherwise it
+    ; touches the right margin of the reverse video area and looks ugly.
+    lda #0
+    ldy toggle:beq not_special_case
+    ldy option_led_shape:cpy #1:bne not_special_case
+    lda #181
+.not_special_case
+    ldy #4:sta (dest),y
     clc:lda src:adc #4:sta src:inc_word_high src+1
     clc:lda dest:adc #mode_7_width:sta dest:inc_word_high dest+1
     dex:bpl line_loop
