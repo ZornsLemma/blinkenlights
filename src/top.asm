@@ -132,6 +132,24 @@ endif
     ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
     ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
 
+    ; Set all the LEDs to be off and just about to turn on, so they start in sync.
+    assert led_count == 5*256
+    ldx #0
+.init_state_loop
+    lda #0
+    sta state_table     ,x
+    sta state_table+&100,x
+    sta state_table+&200,x
+    sta state_table+&300,x
+    sta state_table+&400,x
+    lda #1
+    sta count_table     ,x
+    sta count_table+&100,x
+    sta count_table+&200,x
+    sta count_table+&300,x
+    sta count_table+&400,x
+    dex:bne init_state_loop
+
     ; Compile code to poke the selected LED bitmap into screen RAM.
     lda option_led_shape:asl a:clc:adc option_led_size:asl a
     tay:ldx led_shape_list,y
@@ -773,4 +791,4 @@ include "../res/led-shapes.asm"
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
 
-; TODO: I am currently *maybe* seeing a slight weirdness with some of the LEDs when they first start animating - it's probably fine, but have a look and see if not all are initialised or the fact that some panels don't use *all* the LED slots has some kind of impact
+; TODO: I am currently *maybe* seeing a slight weirdness with some of the LEDs when they first start animating - it's probably fine, but have a look and see if not all are initialised or the fact that some panels don't use *all* the LED slots has some kind of impact - I *think* this was caused by not initialising state_table and count_table every time, so after the first animation the LEDs didn't all start in sync - if so I have now fixed this, will leave this TODO in place for a bit in case there was another cause
