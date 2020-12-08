@@ -11,8 +11,8 @@ def mybin(i):
 # matter, it isn't worth complicating the code to improve this.
 def encode_shape(f, name, shape):
     assert ("large" in name and len(shape) == 6) or ("small" in name and len(shape) == 4)
-    shape_no_blanks = [x for x in shape if x != 0]
-    shape_sorted = sorted(enumerate(shape_no_blanks), key=lambda x: x[1])
+    shape_sorted = sorted(enumerate(shape), key=lambda x: x[1])
+    shape_sorted = [(x, y) for (x, y) in shape_sorted if y != 0]
     f.write(".led_shape_%s\n" % name)
     for k, g in itertools.groupby(shape_sorted, key=lambda x: x[1]):
         f.write("   equb %s, %s\n" % (mybin(k), ", ".join([str(x[0]) for x in g] + ["128"])))
@@ -41,4 +41,15 @@ with open(sys.argv[1], "w") as f:
     encode_shape(f, "1_small", (0b00010000,
                                 0b00111000,
                                 0b00010000,
+                                0b00000000))
+
+    encode_shape(f, "2_large", (0b00000000,
+                                0b01111110,
+                                0b01111110,
+                                0b01111110,
+                                0b00000000,
+                                0b00000000))
+    encode_shape(f, "2_small", (0b00000000,
+                                0b00111100,
+                                0b00111100,
                                 0b00000000))
