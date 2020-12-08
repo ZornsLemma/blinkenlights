@@ -44,6 +44,7 @@ else
     ; TODO WAIT FOR VSYNC?
     jsr show_led_options
     jsr show_panel_colour
+    jsr show_panel_template_SFTODO2
 endif
 
     ; Repeatedly check for keys pressed and process them.
@@ -79,6 +80,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb keyboard_2:equw adjust_led_shape
     equb keyboard_3:equw adjust_led_size
     equb keyboard_7:equw adjust_panel_colour
+    equb keyboard_8:equw adjust_panel_template
     equb 0
 
 .adjust_led_colour
@@ -96,6 +98,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 .adjust_panel_colour
     ldy #option_panel_colour-option_base:jsr adjust_option
     jmp show_panel_colour ; TODO: fall through
+
+.adjust_panel_template
+    ldy #option_panel_template-option_base:jsr adjust_option
+    jmp show_panel_template_SFTODO2 ; TODO RENAME THIS LABEL, TODO: JUST FALL THRU?
 
 ; Increment or decrement option Y (depending whether SHIFT is pressed or not),
 ; wrapping around at the ends of the range.
@@ -157,6 +163,12 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     rts
 }
 
+.show_panel_template_SFTODO2
+    lda option_panel_template:asl a:tay
+    ldx panel_template_list,y
+    lda panel_template_list+1,y:tay
+    jmp show_panel_template ; SFTODO JUST FALL THRU? THIS NEEDS MOVING INTO THIS FILE ANYWAY
+
 ; Update the LED image in the menu to reflect the colour, shape and size
 ; options.
 .show_led_options
@@ -198,12 +210,15 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 0
 .option_panel_colour
     equb 0
+.option_panel_template
+    equb 0
 
 .option_max
     equb 7 ; LED colour
     equb 4 ; LED shape
     equb 1 ; LED size
     equb 7 ; panel colour
+    equb 2 ; panel template
 
 .menu_template
     incbin "../res/menu-template.bin"

@@ -43,8 +43,8 @@ include "constants.asm"
         led_max_line = 3
     endif
 
-    panel_template_top_left_x = 3
-    panel_template_top_left_y = 10
+    panel_template_top_left_x = 19
+    panel_template_top_left_y = 9
 
     irq1v = &204
 
@@ -519,7 +519,11 @@ x_groups = width_chars / x_group_chars
     tay
 .lda_pixel_to_sixel_row_table_y
     lda $ffff,y \ patched
+    ldy sixel_inverse_row:cpy #sixel_height-1:bne not_first_sixel_row
+    ldy #0:sta (screen_ptr),y:jmp done_first_sixel_row
+.not_first_sixel_row
     ldy #0:ora (screen_ptr),y:sta (screen_ptr),y
+.done_first_sixel_row
     inc_word screen_ptr
     dex:bpl sixel_for_x_group_loop
     inc_word ptr
@@ -626,8 +630,18 @@ endmacro
         equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
     next
 
-.panel_template
+.panel_template ; TODO: THIS LABEL IS PROB TEMP NOW, UNTIL I REWORK THE ANIM CODE
+.panel_template_circle_32
     incbin "../res/circle-32.bin"
+.panel_template_rectangle_32
+    incbin "../res/rectangle-32.bin"
+.panel_template_triangle_32
+    incbin "../res/triangle-32.bin"
+
+.panel_template_list
+    equw panel_template_circle_32
+    equw panel_template_rectangle_32
+    equw panel_template_triangle_32
 
 .key10_command
     equs "KEY10 CALL &"
