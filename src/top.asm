@@ -97,6 +97,16 @@ macro inc_word_high x
 endmacro
 
 .start
+    ; Set up the BREAK key to re-enter this code. (We don't do this in !BOOT
+    ; because that would cause a crash if the user pressed BREAK before this
+    ; code has loaded.) We could use *FX247 but that would also trap CTRL-BREAK;
+    ; we're not trying to make ourselves unkillable, just taking advantage of
+    ; BREAK's hardware reset ability to interrupt the running animation without
+    ; us needing to spend CPU cycles checking the keyboard.
+    ldx #lo(key10_command)
+    ldy #hi(key10_command)
+    jsr oscli
+
 include "menu.asm"
 if FALSE
 \ START TEMP HACK
@@ -618,6 +628,11 @@ endmacro
 
 .panel_template
     incbin "../res/circle-32.bin"
+
+.key10_command
+    equs "KEY10 CALL &"
+    equ_hex16 start
+    equs "|M", 13
 
 .end
 

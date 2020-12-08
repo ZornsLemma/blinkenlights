@@ -27,3 +27,4 @@ keyboard_shift = -1
 osrdch = &ffe0
 oswrch = &ffee
 osbyte = &fff4
+oscli  = &fff7
