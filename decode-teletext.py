@@ -45,6 +45,7 @@ if not led:
         f.write(decoded)
 else:
     with open(args[2], "w") as f:
+        f.write("; AUTO-GENERATED, DO NOT EDIT! Edit %s instead.\n\n" % args[1])
         for y in range(5):
             for x in range(2):
                 f.write("    ; Shape %d, %s\n" % (y, "large" if x == 0 else "small"))
