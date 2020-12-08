@@ -124,12 +124,6 @@ if FALSE
 \ END TEMP HACk
 endif
 
-; SFTODO: MOVE THIS!
-.led_shape_SFTODO
-    equb %00111100, 0, 5, 128
-    equb %01111110, 1, 2, 3, 4, 128
-    equb 0
-
 \ TODO NEED TO MOVE ALL THIS CODE OUT OF TOP.ASM INTO ANIMATION.ASM OR SIMILAR
 .start_animation
 {
@@ -139,8 +133,10 @@ endif
     ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
 
     ; Compile code to poke the selected LED bitmap into screen RAM.
-    ; TODO: NEEDS TWEAKING TO BE GENUINELY DYNAMIC
-    ldx #lo(led_shape_SFTODO):ldy #hi(led_shape_SFTODO):jsr compile_led_shape
+    lda option_led_shape:asl a:clc:adc option_led_size:asl a
+    tay:ldx led_shape_list,y
+    lda led_shape_list+1,y:tay
+    jsr compile_led_shape
 
     \ Set up the LEDs based on the panel template.
     \ TODO: RENAME PTR TO TEMPLATE_PTR OR SOMETHING?
@@ -762,6 +758,14 @@ endmacro
     equw panel_template_rectangle_32
     equw panel_template_triangle_32
 
+include "../res/led-shapes.asm"
+.led_shape_list
+    equw led_shape_0_large, led_shape_0_small
+    equw led_shape_1_large, led_shape_1_small
+    equw led_shape_2_large, led_shape_2_small
+    equw led_shape_3_large, led_shape_3_small
+    equw led_shape_4_large, led_shape_4_small
+
 .key10_command
     equs "KEY10 CALL &"
     equ_hex16 start
@@ -771,3 +775,5 @@ endmacro
 
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
+
+; TODO: I am currently *maybe* seeing a slight weirdness with some of the LEDs when they first start animating - it's probably fine, but have a look and see if not all are initialised or the fact that some panels don't use *all* the LED slots has some kind of impact
