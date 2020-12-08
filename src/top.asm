@@ -161,13 +161,10 @@ endif
     lda #hi(address_low_table):sta SFTODOPATCHME2+2
     lda #hi(address_high_table):sta SFTODOPATCHME3+2
 
-    \ TODO: I NEED TO APPLY THE 1 OR 2 OFFSET TO SCREEN_PTR HERE DEPENDING ON LED SIZE
     lda #0:sta led_x:sta led_y
-if big_leds
-    lda #1
-else
-    lda #2
-endif
+    ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
+    ; cell; for small LEDs, "Y=0" is scanline 2.
+    lda option_led_size:clc:adc #1
     sta screen_ptr
     lda #&58:sta screen_ptr+1
     \ TODO WE NEED TO SET UP inverse_row_table, address_{low,high}_table - OTHER TABLES CAN SAFELY BE OVER-FILLED
@@ -759,7 +756,7 @@ endmacro
     equw panel_template_triangle_32
 
 include "../res/led-shapes.asm"
-.led_shape_list
+.led_shape_list ; TODO: Generate this list in led-shapes.asm?
     equw led_shape_0_large, led_shape_0_small
     equw led_shape_1_large, led_shape_1_small
     equw led_shape_2_large, led_shape_2_small
