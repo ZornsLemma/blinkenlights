@@ -81,6 +81,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb keyboard_3:equw adjust_led_size
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
+    equb keyboard_space:equw start_animation
     equb 0
 
 .adjust_led_colour
@@ -164,10 +165,15 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 }
 
 .show_panel_template_SFTODO2
-    lda option_panel_template:asl a:tay
+    lda option_panel_template:jsr get_panel_template_a_address
+    jmp show_panel_template ; SFTODO JUST FALL THRU? THIS NEEDS MOVING INTO THIS FILE ANYWAY
+
+; Set YX to point to panel template A.
+.*get_panel_template_a_address ; TODO: MOVE INTO ANOTHER FILE?
+    asl a:tay
     ldx panel_template_list,y
     lda panel_template_list+1,y:tay
-    jmp show_panel_template ; SFTODO JUST FALL THRU? THIS NEEDS MOVING INTO THIS FILE ANYWAY
+    rts
 
 ; Update the LED image in the menu to reflect the colour, shape and size
 ; options.
@@ -202,15 +208,15 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 }
 
 .option_base
-.option_led_colour
+.*option_led_colour
     equb colour_red
-.option_led_shape
+.*option_led_shape
     equb 0
-.option_led_size
+.*option_led_size
     equb 0
-.option_panel_colour
+.*option_panel_colour
     equb 0
-.option_panel_template
+.*option_panel_template
     equb 0
 
 .option_max

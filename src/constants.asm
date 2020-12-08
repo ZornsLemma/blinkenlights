@@ -1,3 +1,4 @@
+vdu_set_palette = 19
 vdu_set_mode = 22
 
 colour_red = 1
@@ -23,6 +24,7 @@ keyboard_8 = -22
 keyboard_9 = -39
 keyboard_0 = -40
 keyboard_shift = -1
+keyboard_space = -99
 
 osrdch = &ffe0
 oswrch = &ffee

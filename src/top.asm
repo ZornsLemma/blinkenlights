@@ -122,26 +122,36 @@ if FALSE
 \ END TEMP HACk
 endif
 
+\ TODO NEED TO MOVE ALL THIS CODE OUT OF TOP.ASM INTO ANIMATION.ASM OR SIMILAR
+.start_animation
 {
+    lda #4:jsr set_mode
+    ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
+    ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
+
     \ Set up the LEDs based on the panel template.
+    \ TODO: RENAME PTR TO TEMPLATE_PTR OR SOMETHING?
+    lda option_panel_template:jsr get_panel_template_a_address
+    stx ptr:sty ptr+1
 
     \ The first two bytes of the template are the number of LEDs; we need to set up
     \ the per-frame initialisation accordingly, and if we don't have an exact
     \ multiple of 256 LEDs we need to take that into account by starting with X>0.
-    lda panel_template+1:sta lda_imm_led_groups+1
-    lda panel_template:beq exact_multiple
+    ldy #1:lda (ptr),y:sta lda_imm_led_groups+1
+    dey:lda (ptr),y:beq exact_multiple
     inc lda_imm_led_groups+1
-    lda #0:sec:sbc panel_template
+    lda #0:sec:sbc (ptr),y
 .exact_multiple
     sta lda_imm_initial_x+1:sta working_index
+    clc:lda ptr:adc #2:sta ptr
+    inc_word_high ptr+1
+
     \ TODO PROB WANT TO PUT A INTO X OR SOMETHING FOR FOLLOWING CODE TO WORK WITH
 
     lda #hi(inverse_row_table):sta SFTODOPATCHME1+2
     lda #hi(address_low_table):sta SFTODOPATCHME2+2
     lda #hi(address_high_table):sta SFTODOPATCHME3+2
 
-    lda #lo(panel_template+2):sta ptr \ TODO RENAME ptr TO template_ptr OR SIMILAR
-    lda #hi(panel_template+2):sta ptr+1
     \ TODO: I NEED TO APPLY THE 1 OR 2 OFFSET TO SCREEN_PTR HERE DEPENDING ON LED SIZE
     lda #0:sta led_x:sta led_y
 if big_leds
@@ -630,7 +640,7 @@ endmacro
         equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
     next
 
-.panel_template ; TODO: THIS LABEL IS PROB TEMP NOW, UNTIL I REWORK THE ANIM CODE
+; TODO DELETE .panel_template ; TODO: THIS LABEL IS PROB TEMP NOW, UNTIL I REWORK THE ANIM CODE
 .panel_template_circle_32
     incbin "../res/circle-32.bin"
 .panel_template_rectangle_32

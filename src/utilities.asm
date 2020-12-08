@@ -9,6 +9,14 @@ eot = 128
     jsr print_string_inline:equb 23, 1, 0, 0,  0, 0, 0, 0, 0, 0, eot
     rts
 
+; Set logical colour X to physical colour Y.
+.set_palette_x_to_y
+    lda #vdu_set_palette:jsr oswrch
+    txa:jsr oswrch
+    tya:jsr oswrch
+    jsr print_string_inline:equb 0, 0, 0, eot
+    rts
+
 ; Print the string following "jsr print_string_inline" (terminate by eot) using
 ; OSWRCH.
 .print_string_inline
