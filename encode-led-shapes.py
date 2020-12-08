@@ -10,7 +10,9 @@ def mybin(i):
 # iny/dey instead of ldy #n. Unless space gets so tight that the space-saving
 # matter, it isn't worth complicating the code to improve this.
 def encode_shape(f, name, shape):
-    shape_sorted = sorted(enumerate(shape), key=lambda x: x[1])
+    assert ("large" in name and len(shape) == 6) or ("small" in name and len(shape) == 4)
+    shape_no_blanks = [x for x in shape if x != 0]
+    shape_sorted = sorted(enumerate(shape_no_blanks), key=lambda x: x[1])
     f.write(".led_shape_%s\n" % name)
     for k, g in itertools.groupby(shape_sorted, key=lambda x: x[1]):
         f.write("   equb %s, %s\n" % (mybin(k), ", ".join([str(x[0]) for x in g] + ["128"])))
@@ -18,6 +20,7 @@ def encode_shape(f, name, shape):
 
 with open(sys.argv[1], "w") as f:
     f.write("; AUTO-GENERATED, DO NOT EDIT! Edit encode-led-shapes.py instead.\n\n")
+
     encode_shape(f, "0_large", (0b00111100,
                                 0b01111110,
                                 0b01111110,
@@ -28,3 +31,14 @@ with open(sys.argv[1], "w") as f:
                                 0b00111100,
                                 0b00111100,
                                 0b00011000))
+
+    encode_shape(f, "1_large", (0b00010000,
+                                0b00111000,
+                                0b01111100,
+                                0b00111000,
+                                0b00010000,
+                                0b00000000))
+    encode_shape(f, "1_small", (0b00010000,
+                                0b00111000,
+                                0b00010000,
+                                0b00000000))
