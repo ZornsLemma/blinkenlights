@@ -20,6 +20,22 @@ include "constants.asm"
 .led_y
     equb 0
 
+    ; random.asm workspace; some of this could potentially overlap with other
+    ; zero page users if necessary, but for now we don't need to do this.
+.SEED0
+    equb 0
+.SEED1
+    equb 0
+.SEED2
+    equb 0
+.SEED3
+    equb 0
+.TMP
+    equd 0
+.MOD
+    equb 0
+.REM
+    equb 0
 
     org &2000
     guard &5800
@@ -702,6 +718,7 @@ x_groups = width_chars / x_group_chars
 \ TODO: END EXPERIMENTAL
 
 include "utilities.asm"
+include "random.asm"
      
 
     \ TODO: Eventually probably want to have a BASIC loader which generates a different
