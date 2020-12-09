@@ -12,6 +12,8 @@ osbyte_flush_buffer = &15
 osbyte_read_key = &81
 osbyte_read_high_order_address = &82
 
+osword_read_system_clock = &01
+
 buffer_keyboard = 0
 
 keyboard_1 = -49
@@ -29,6 +31,7 @@ keyboard_space = -99
 
 osrdch = &ffe0
 oswrch = &ffee
+osword = &fff1
 osbyte = &fff4
 oscli  = &fff7
 

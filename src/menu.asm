@@ -18,6 +18,7 @@
         inx
         bne loop
     }
+    jsr update_random_seed
 
 if FALSE
     ; TODO: SEMI-EXPERIMENTAL
@@ -57,8 +58,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     tay:ldx input_table,y:beq input_loop
     lda #osbyte_read_key:ldy #&ff:jsr osbyte
     inx:bne key_loop
-    ; The key at current_index is pressed; deal with it. We assume this
-    ; corrupts all memory in zero page, so we stack current_index first.
+    ; The key at current_index is pressed; deal with it. We assume the handler
+    ; subroutine corrupts all memory in zero page, so we stack current_index
+    ; first.
+    jsr update_random_seed
     lda current_index:pha:tay
     lda input_table+1,y:sta ptr
     lda input_table+2,y:sta ptr+1

@@ -112,7 +112,7 @@
 ;
 ; Note that TMP to TMP+3 are only used after RAND is called.
 ;
-.*URANDOM8
+.*urandom8
          STA MOD   ; store modulus in MOD
          LDX #32   ; calculate remainder of 2^32 / MOD
          LDA #1
@@ -169,6 +169,38 @@
          BEQ UR8E  ; branch if 32-bit carry
 .UR8H    LDA TMP+3 ; return upper 8 bits of product in accumulator
          RTS
+
+; The following subroutine is new and not taken from 6502.org.
+; Mix the current system clock into the random seed.
+.*update_random_seed
+{
+    ; Rotate the seed by 8 bits; this will spread the highly-variable low bits
+    ; of the system clock across more of the seed over multiple calls to this
+    ; subroutine.
+    ldx #3
+    ldy SEED0
+.rotate_loop
+    lda SEED0,x
+    sty SEED0,x
+    tay
+    dex
+    bpl rotate_loop
+
+    lda #osword_read_system_clock
+    ldx #lo(current_time):ldy #hi(current_time)
+    jsr osword
+    ldx #3
+.update_loop
+    lda current_time,x
+    eor SEED0,x
+    sta SEED0,x
+    dex
+    bpl update_loop
+    rts
+
+.current_time
+    skip 5
+}
 
          ; TODO: MAY WANT TO FACTOR THE TABLES OUT INTO THEIR OWN FILES SO WE CAN ARRANGE THE TABLES INTO THE ALREADY-PAGE-ALIGNED BIT WITH MY OWN TABLES, SO WE DON'T HAVE TWO ALIGNMENT-INDUCED HOLES
 macro make_table n
