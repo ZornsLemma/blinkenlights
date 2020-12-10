@@ -45,7 +45,8 @@ else
     ; TODO WAIT FOR VSYNC?
     jsr show_led_visual_options
     jsr show_led_frequency
-    ; TODO: LED SPREAD AND DISTRIBUTION
+    jsr show_led_spread
+    ; TODO: LED DISTRIBUTION
     jsr show_panel_colour
     jsr show_panel_template_SFTODO2
 endif
@@ -85,6 +86,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb keyboard_2:equw adjust_led_shape
     equb keyboard_3:equw adjust_led_size
     equb keyboard_4:equw adjust_led_frequency
+    equb keyboard_5:equw adjust_led_spread
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
     equb keyboard_space:equw start_animation
@@ -105,6 +107,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 .adjust_led_frequency
     ldy #option_led_frequency-option_base:jsr adjust_option
     jmp show_led_frequency
+
+.adjust_led_spread
+    ldy #option_led_spread-option_base:jsr adjust_option
+    jmp show_led_spread
 
 .adjust_panel_colour
     ldy #option_panel_colour-option_base:jsr adjust_option
@@ -244,6 +250,20 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     rts
 }
 
+.show_led_spread
+{
+    ; TODO VSYNC?
+    ; All the entries at spread_text are exactly two characters long.
+    lda option_led_spread:asl a:tax
+    ldy #0
+.loop
+    lda spread_text,x
+    sta mode_7_screen + (12 * mode_7_width) + 8,y
+    inx
+    iny:cpy #2:bne loop
+    rts
+}
+
 .option_base
 .*option_led_colour
     equb colour_red
@@ -253,6 +273,8 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 0
 .*option_led_frequency
     equb 1
+.*option_led_spread
+    equb 2
 .*option_panel_colour
     equb 0
 .*option_panel_template
@@ -263,6 +285,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 4 ; LED shape
     equb 1 ; LED size
     equb num_frequencies - 1 ; LED frequency
+    equb num_spreads - 1 ; LED spread
     equb 7 ; panel colour
     equb 2 ; panel template
 
