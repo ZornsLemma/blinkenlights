@@ -46,7 +46,7 @@ else
     jsr show_led_visual_options
     jsr show_led_frequency
     jsr show_led_spread
-    ; TODO: LED DISTRIBUTION
+    jsr show_led_distribution
     jsr show_panel_colour
     jsr show_panel_template_SFTODO2
 endif
@@ -87,8 +87,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb keyboard_3:equw adjust_led_size
     equb keyboard_4:equw adjust_led_frequency
     equb keyboard_5:equw adjust_led_spread
+    equb keyboard_6:equw adjust_led_distribution
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
+    ; TODO: Don't forget to do the randomise option!
     equb keyboard_space:equw start_animation
     equb 0
 
@@ -111,6 +113,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 .adjust_led_spread
     ldy #option_led_spread-option_base:jsr adjust_option
     jmp show_led_spread
+
+.adjust_led_distribution
+    ldy #option_led_distribution-option_base:jsr adjust_option
+    jmp show_led_distribution
 
 .adjust_panel_colour
     ldy #option_panel_colour-option_base:jsr adjust_option
@@ -264,6 +270,26 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     rts
 }
 
+.show_led_distribution
+{
+    ; TODO VSYNC
+    ldx option_led_distribution:beq uniformly
+    ldx #text_binomially-text_uniformly
+.uniformly
+    ldy #0
+.loop
+    lda text_uniformly,x
+    sta mode_7_screen + (13 * mode_7_width) + 4,y
+    inx
+    iny:cpy #text_binomially-text_uniformly:bne loop
+    rts
+
+.text_uniformly
+    equs "uniformly "
+.text_binomially
+    equs "binomially"
+}
+
 .option_base
 .*option_led_colour
     equb colour_red
@@ -275,6 +301,8 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 1
 .*option_led_spread
     equb 2
+.*option_led_distribution
+    equb 0
 .*option_panel_colour
     equb 0
 .*option_panel_template
@@ -286,6 +314,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 1 ; LED size
     equb num_frequencies - 1 ; LED frequency
     equb num_spreads - 1 ; LED spread
+    equb 1 ; LED distribution
     equb 7 ; panel colour
     equb 2 ; panel template
 
