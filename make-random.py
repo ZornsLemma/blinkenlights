@@ -14,7 +14,7 @@
 import sys
 
 frequencies = (0.5, 1.0, 1.5, 2.0) # Hz
-spreads = (0.01, 0.05, 0.1, 0.2) # 1=100%
+spreads = (0.02, 0.05, 0.1, 0.2) # 1=100%
 
 with open(sys.argv[1], "w") as f:
     f.write("; AUTO-GENERATED, DO NOT EDIT! Edit make-random.py instead.\n\n")
