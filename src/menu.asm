@@ -23,7 +23,7 @@
 if FALSE
     ; TODO: SEMI-EXPERIMENTAL
 .SFTODOHACK8
-    jsr show_led_options
+    jsr show_led_visual_options
     jsr show_panel_colour
     lda option_led_colour:clc:adc #1:and #7:sta option_led_colour
     lda option_panel_colour:clc:adc #1:and #7:sta option_panel_colour
@@ -43,7 +43,9 @@ if FALSE
     beq SFTODOHACK8
 else
     ; TODO WAIT FOR VSYNC?
-    jsr show_led_options
+    jsr show_led_visual_options
+    jsr show_led_frequency
+    ; TODO: LED SPREAD AND DISTRIBUTION
     jsr show_panel_colour
     jsr show_panel_template_SFTODO2
 endif
@@ -82,6 +84,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb keyboard_1:equw adjust_led_colour
     equb keyboard_2:equw adjust_led_shape
     equb keyboard_3:equw adjust_led_size
+    equb keyboard_4:equw adjust_led_frequency
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
     equb keyboard_space:equw start_animation
@@ -89,15 +92,19 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 
 .adjust_led_colour
     ldy #option_led_colour-option_base:jsr adjust_option
-    jmp show_led_options
+    jmp show_led_visual_options
 
 .adjust_led_shape
     ldy #option_led_shape-option_base:jsr adjust_option
-    jmp show_led_options
+    jmp show_led_visual_options
 
 .adjust_led_size
     ldy #option_led_size-option_base:jsr adjust_option
-    jmp show_led_options
+    jmp show_led_visual_options
+
+.adjust_led_frequency
+    ldy #option_led_frequency-option_base:jsr adjust_option
+    jmp show_led_frequency
 
 .adjust_panel_colour
     ldy #option_panel_colour-option_base:jsr adjust_option
@@ -180,7 +187,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 
 ; Update the LED image in the menu to reflect the colour, shape and size
 ; options.
-.show_led_options
+.show_led_visual_options
 {
     ; TODO: WAIT FOR VSYNC? OR MAYBE OUR CALLER SHOULD DO IT SO INITIAL UPDATE DOESN'T REQUIRE MULTIPLE FRAMES?
     ldyx_mode_7 10,6 \ TODO: MAGIC CONSTANTS - POSS OK IF NOT DUPLICATED ELSEWHERE
@@ -221,7 +228,20 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     clc:lda dest:adc #mode_7_width:sta dest:inc_word_high dest+1
     dex:bpl line_loop
     rts
+}
 
+.show_led_frequency
+{
+    ; TODO WAIT FOR VSYNC?
+    ; All the entries at frequency_text are exactly three characters long.
+    lda option_led_frequency:asl a:adc option_led_frequency:tax
+    ldy #0
+.loop
+    lda frequency_text,x
+    sta mode_7_screen + (11 * mode_7_width) + 4,y
+    inx
+    iny:cpy #3:bne loop
+    rts
 }
 
 .option_base
@@ -231,6 +251,8 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 0
 .*option_led_size
     equb 0
+.*option_led_frequency
+    equb 1
 .*option_panel_colour
     equb 0
 .*option_panel_template
@@ -240,6 +262,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb 7 ; LED colour
     equb 4 ; LED shape
     equb 1 ; LED size
+    equb num_frequencies - 1 ; LED frequency
     equb 7 ; panel colour
     equb 2 ; panel template
 
@@ -249,3 +272,5 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 
 .mode_7_led_bitmap_base
 include "../res/menu-led-template.asm"
+
+include "../res/led-freq-spread.asm"
