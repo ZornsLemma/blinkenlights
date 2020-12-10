@@ -97,20 +97,42 @@ include "constants.asm"
     ldy #hi(key10_command)
     jsr oscli
 
-include "menu.asm"
+    ; Execution falls through into the code in menu.asm.
+    include "menu.asm"
+    include "animate.asm"
+    include "utilities.asm"
 
-\ TODO: Standardise on & vs $ for hex - probably &
+.panel_template_circle_32
+    incbin "../res/circle-32.bin"
+.panel_template_rectangle_32
+    incbin "../res/rectangle-32.bin"
+.panel_template_triangle_32
+    incbin "../res/triangle-32.bin"
 
-include "animate.asm"
-include "utilities.asm"
-include "random.asm"
-     
+.panel_template_list
+    equw panel_template_circle_32
+    equw panel_template_rectangle_32
+    equw panel_template_triangle_32
 
-    \ TODO: Eventually probably want to have a BASIC loader which generates a different
-    \ random set of frequencies each time.
-    randomize 42
+    include "../res/led-shapes.asm"
+.led_shape_list ; TODO: Generate this list in led-shapes.asm?
+    equw led_shape_0_large, led_shape_0_small
+    equw led_shape_1_large, led_shape_1_small
+    equw led_shape_2_large, led_shape_2_small
+    equw led_shape_3_large, led_shape_3_small
+    equw led_shape_4_large, led_shape_4_small
 
-    ; TODO: ALL OF THESE TABLES CAN BE MOVED AFTER ".end" AND THEREFORE WON'T TAKE UP SPACE ON DISC OR TAKE TIME TO LOAD FROM DISC - BUT AM WAITING UNTIL I PROGRAMATICALLY POPULATE period_table BEFORE MAKING THIS CHANGE
+.key10_command
+    equs "KEY10 CALL &"
+    equ_hex16 start
+    equs "|M", 13
+
+    ; random.asm finishes with some page-aligned tables, so we include it last in
+    ; order to avoid multiple alignment-induced holes.
+    include "random.asm"
+
+.end
+
     align &100
 .count_table
     skip led_count ; TODO: rename this max_led_count?
@@ -135,35 +157,11 @@ include "random.asm"
 .address_high_table
     skip led_count
 
-; TODO DELETE .panel_template ; TODO: THIS LABEL IS PROB TEMP NOW, UNTIL I REWORK THE ANIM CODE
-.panel_template_circle_32
-    incbin "../res/circle-32.bin"
-.panel_template_rectangle_32
-    incbin "../res/rectangle-32.bin"
-.panel_template_triangle_32
-    incbin "../res/triangle-32.bin"
-
-.panel_template_list
-    equw panel_template_circle_32
-    equw panel_template_rectangle_32
-    equw panel_template_triangle_32
-
-include "../res/led-shapes.asm"
-.led_shape_list ; TODO: Generate this list in led-shapes.asm?
-    equw led_shape_0_large, led_shape_0_small
-    equw led_shape_1_large, led_shape_1_small
-    equw led_shape_2_large, led_shape_2_small
-    equw led_shape_3_large, led_shape_3_small
-    equw led_shape_4_large, led_shape_4_small
-
-.key10_command
-    equs "KEY10 CALL &"
-    equ_hex16 start
-    equs "|M", 13
-
-.end
-
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
 
 ; TODO: I am currently *maybe* seeing a slight weirdness with some of the LEDs when they first start animating - it's probably fine, but have a look and see if not all are initialised or the fact that some panels don't use *all* the LED slots has some kind of impact - I *think* this was caused by not initialising state_table and count_table every time, so after the first animation the LEDs didn't all start in sync - if so I have now fixed this, will leave this TODO in place for a bit in case there was another cause
+
+\ TODO: Standardise on & vs $ for hex - probably &
+
+; TODO: Do some basic statistical analysis on the LED periods to check they look sane for a few combinations of parameters
