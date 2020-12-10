@@ -40,23 +40,11 @@ include "constants.asm"
     org &2000
     guard &5800
 
-    panel_width = 40
-    panel_height = 32
-    led_count = panel_width*panel_height
     show_missed_vsync = FALSE
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
-    big_leds = TRUE
     \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
-    led_style = 3 \ 0=circular, 1=diamond, 2=rectangular, 3=square, 4=triangular
-    if big_leds
-        led_start_line = 1
-        led_max_line = 5
-    else
-        led_start_line = 2
-        led_max_line = 3
-    endif
 
     panel_template_top_left_x = 19
     panel_template_top_left_y = 9

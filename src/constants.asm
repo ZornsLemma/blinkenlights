@@ -8,6 +8,10 @@ mode_7_screen = &7c00
 mode_7_width = 40
 mode_7_graphics_colour_base = 144
 
+panel_width = 40
+panel_height = 32
+led_count = panel_width*panel_height
+
 osbyte_flush_buffer = &15
 osbyte_read_key = &81
 osbyte_read_high_order_address = &82
