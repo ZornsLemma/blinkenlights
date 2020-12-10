@@ -6,5 +6,6 @@ for x in res/*.png; do
 	python encode-panel.py "$x" "res/$(basename $x .png).bin"
 done
 python encode-led-shapes.py res/led-shapes.asm
+python make-random.py res/led-freq-spread.asm
 cd src
 beebasm -w -v -i top.asm -do ../blinkenlights.ssd -opt 3 > ../top.lst
