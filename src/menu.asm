@@ -20,28 +20,6 @@
     }
     jsr update_random_seed
 
-if FALSE
-    ; TODO: SEMI-EXPERIMENTAL
-.SFTODOHACK8
-    jsr show_led_visual_options
-    jsr show_panel_colour
-    lda option_led_colour:clc:adc #1:and #7:sta option_led_colour
-    lda option_panel_colour:clc:adc #1:and #7:sta option_panel_colour
-    lda option_led_colour:bne SFTODO91
-    lda option_led_size:eor #1:sta option_led_size
-    bne SFTODO91
-    lda option_led_shape:clc:adc #1:cmp #5:bne SFTODO99
-    lda #0
-.SFTODO99
-    sta option_led_shape
-.SFTODO91
-    lda #50:sta &70
-.SFTODOHACK8B
-    lda #19:jsr osbyte
-    dec &70
-    bne SFTODOHACK8B
-    beq SFTODOHACK8
-else
     ; TODO WAIT FOR VSYNC?
     jsr show_led_visual_options
     jsr show_led_frequency
@@ -49,7 +27,6 @@ else
     jsr show_led_distribution
     jsr show_panel_colour
     jsr show_panel_template_SFTODO2
-endif
 
     ; Repeatedly check for keys pressed and process them.
 .input_loop

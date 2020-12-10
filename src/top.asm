@@ -98,19 +98,6 @@ include "constants.asm"
     jsr oscli
 
 include "menu.asm"
-if FALSE
-\ START TEMP HACK
-{
-    lda #22:jsr &ffee:lda #7:jsr &ffee
-    ldy #24
-.loop
-    lda #145:jsr &ffee:lda #154:jsr &ffee:jsr &ffe7
-    dey:bne loop
-    ldx #lo(panel_template):ldy #hi(panel_template):jsr show_panel_template
-.HANG JMP HANG
-}
-\ END TEMP HACk
-endif
 
 \ TODO: Standardise on & vs $ for hex - probably &
 
