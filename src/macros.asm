@@ -5,6 +5,19 @@ macro fall_through_to target
     assert P% == target
 endmacro
 
+macro inc_word x
+    inc x
+    bne no_carry
+    inc x+1
+.no_carry
+endmacro
+
+macro inc_word_high x
+    bcc no_carry
+    inc x
+.no_carry
+endmacro
+
 ; Load YX with the mode 7 screen address of character cell (x, y).
 ; TODO: Just move this into menu.asm? It's not generally useful.
 macro ldyx_mode_7 x, y
