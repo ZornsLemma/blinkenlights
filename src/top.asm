@@ -43,7 +43,6 @@ include "constants.asm"
     panel_width = 40
     panel_height = 32
     led_count = panel_width*panel_height
-    ticks_per_frame = 8
     show_missed_vsync = FALSE
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
@@ -248,8 +247,58 @@ endif
     inc led_y
     lda led_y:cmp #32:bne SFTODOLOOP
 
+    ; Initialise the LED periods using randomly generated values based on the
+    ; chosen parameters.
 
+    ; Set ptr=frequency_spread_parameters+((option_led_frequency*num_spreads)+option_led_spread)*4.
+    ; We just do a naive multiplication by addition here, it's simple and not
+    ; at all critical.
+    lda option_led_spread:sta ptr
+    lda #0:sta ptr+1
+    ldx option_led_frequency:beq multiply_done
+.multiply_loop
+    clc:lda ptr:adc #num_spreads:sta ptr
+    inc_word_high ptr+1
+    dex:bne multiply_loop
+.multiply_done
+    asl ptr:asl ptr+1
+    asl ptr:asl ptr+1
+    clc:lda ptr:adc #lo(frequency_spread_parameters):sta ptr
+    lda ptr+1:adc #hi(frequency_spread_parameters):sta ptr+1
 
+    ; Set the runtime ticks-per-frame.
+    ldy #0:lda (ptr),y
+    sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
+
+    ; Generate the random LED periods.
+; TODO: PROPER ZP ALLOC
+parameter_a = frame_count
+parameter_b = inverse_raster_row
+parameter_c = led_x
+period = led_y
+    iny:lda (ptr),y:sta parameter_a
+    iny:lda (ptr),y:sta parameter_b
+    iny:lda (ptr),y:sta parameter_c
+    lda option_led_distribution:bne binomially_distributed
+    clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
+    lda #0:sta parameter_c
+.binomially_distributed
+    lda lda_imm_led_groups+1:sta led_group_count
+    lda lda_imm_initial_x+1:sta working_index
+    lda #hi(period_table):sta sta_period_table_x+2
+.generate_random_led_loop
+    lda parameter_a:sta period
+    lda parameter_b:jsr urandom8:clc:adc period:sta period
+    lda parameter_c:beq no_parameter_c
+    jsr urandom8:clc:adc period:sta period
+.no_parameter_c
+    ldx working_index
+    lda period
+.sta_period_table_x
+    sta &ff00,x \ patched
+    inc working_index:bne generate_random_led_loop
+    inc sta_period_table_x+2
+    dec led_group_count:bne generate_random_led_loop
 }
 
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
@@ -323,13 +372,15 @@ endif
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
     bmi not_going_to_toggle
-    sbc #ticks_per_frame
+.sbc_imm_ticks_per_frame_1
+    sbc #&ff \ patched
     bmi toggle_led
 .sta_count_x_1
     sta $ff00,x \ patched
     advance_to_next_led
 .not_going_to_toggle
-    sbc #ticks_per_frame
+.sbc_imm_ticks_per_frame_2
+    sbc #&ff \ patched
 .sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
     sta $ff00,x \ patched
     advance_to_next_led
@@ -730,37 +781,9 @@ include "random.asm"
 .count_table
     skip led_count ; TODO: rename this max_led_count?
 
-    ; TODO: PERIOD TABLE NEEDS TO BE GENERATED EVERY TIME USING USER'S FREQ CHOICES
-macro pequb x
-    assert x >= 0 and x <= 255
-    equb x
-endmacro
-
     align &100
 .period_table
-    for i, 0, led_count-1
-        \ TODO: original try: equb 20+rnd(9)
-        \ equb 23+rnd(5)
-        \ equb 10+rnd(6)
-        \ equb 12+rnd(4)
-        \ equb 20+rnd(6) \ maybe not too bad
-        \ equb 40+rnd(18) \ TODO EXPERIMENTAL - MAYBE NOT TOO BAD
-        \ equb 40+rnd(7)
-        \ equb 45+rnd(9)
-        \ equb 47+rnd(5)
-        \ equb 22+rnd(5)
-        \ equb 22+rnd(9) \ maybe not too bad
-        \ equb 22+rnd(7) \ maybe not too bad
-        \ equb 30+rnd(9)
-        \ equb 40+rnd(18)
-        \ equb 20+rnd(18) \ TODO EXPERIMENTAL
-        \ equb 46+rnd(4)+rnd(4)
-        \ equb 30+rnd(5)+rnd(5)
-        \ equb 30+rnd(3)+rnd(3)
-        \ equb 50+rnd(5)+rnd(5)
-        \ equb 40*ticks_per_frame+rnd(ticks_per_frame*2)
-        pequb 22*ticks_per_frame+rnd(ticks_per_frame*5) \ fairly good (tpf=3, 4, 8)
-    next
+    skip led_count
 
     align &100
 .state_table
