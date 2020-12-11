@@ -75,11 +75,14 @@ include "constants.asm"
     incbin "../res/rectangle-32.bin"
 .panel_template_triangle_32
     incbin "../res/triangle-32.bin"
+.panel_template_tiled_diamonds
+    incbin "../res/tiled-diamonds.bin"
 
 .panel_template_list
     equw panel_template_circle_32
     equw panel_template_rectangle_32
     equw panel_template_triangle_32
+    equw panel_template_tiled_diamonds
 
     include "../res/led-shapes.asm"
 .led_shape_list ; TODO: Generate this list in led-shapes.asm?

@@ -296,7 +296,7 @@ current_index = working_index ; TODO PROPER ZP ALLOC
     equb num_spreads - 1 ; LED spread
     equb 1 ; LED distribution
     equb 7 ; panel colour
-    equb 2 ; panel template
+    equb 3 ; panel template
 
 .menu_template
     incbin "../res/menu-template.bin"
