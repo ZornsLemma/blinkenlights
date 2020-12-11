@@ -11,17 +11,17 @@
     guard shared_zp_end
     clear shared_zp_start, shared_zp_end
 .led_group_count
-    equb 0
+    skip 1
 .frame_count
-    equb 0
+    skip 1
 .inverse_raster_row
-    equb 0
+    skip 1
 .working_index
-    equb 0
+    skip 1
 .led_x
-    equb 0
+    skip 1
 .led_y
-    equb 0
+    skip 1
 
     org animate_start
     guard mode_4_screen

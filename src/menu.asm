@@ -7,7 +7,7 @@
     org shared_zp_start
     guard shared_zp_end
 .working_index
-    equb 0
+    skip 1
 
     org menu_start
     guard mode_4_screen

@@ -22,9 +22,9 @@ include "constants.asm"
 
     ; Common zero page workspace for other code.
 .src
-    equw 0
+    skip 2
 .dest ; TODO: RENAME TO "dst"?
-    equw 0
+    skip 2
 .zp_tmp
     skip 4
 
@@ -36,7 +36,6 @@ shared_zp_end = &90
 
     org &2000
     guard mode_4_screen
-
 
 .start
     ; Refuse to run on a second processor. (Because we want to re-enter this
