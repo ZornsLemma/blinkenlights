@@ -1,4 +1,14 @@
 {
+    led_top_left_x = 10
+    led_top_left_y = 6
+    led_frequency_x = 4
+    led_frequency_y = 11
+    led_spread_x = 8
+    led_spread_y = 12
+    led_distribution_x = 4
+    led_distribution_y = 13
+    panel_colour_top_left_x = 25
+    panel_colour_top_left_y = 6
     panel_template_top_left_x = 19
     panel_template_top_left_y = 9
 
@@ -132,7 +142,8 @@
 }
 
 .show_panel_colour
-    lda option_panel_colour:ldyx_mode_7 25, 6 \ TODO: MOVE MAGIC CONSTANTS TO NAMED CONSTANTS AT TOP?
+    lda option_panel_colour
+    ldyx_mode_7 panel_colour_top_left_x, panel_colour_top_left_y
     fall_through_to show_colour
 
 ; Display a colour swatch for colour A at screen memory address YX.
@@ -150,7 +161,7 @@
     iny:sta (dest),y
     lda #181
     iny:sta (dest),y
-    ldy #40:pla:sta (dest),y
+    ldy #mode_7_width:pla:sta (dest),y
     lda #175
     iny:sta (dest),y
     iny:sta (dest),y
@@ -163,7 +174,7 @@
     lda #183:iny:sta (dest),y
     lda #163:iny:sta (dest),y
     lda #181:iny:sta (dest),y
-    lda #mode_7_graphics_colour_base+7:ldy #40:sta (dest),y
+    lda #mode_7_graphics_colour_base+7:ldy #mode_7_width:sta (dest),y
     lda #173:iny:sta (dest),y
     lda #172:iny:sta (dest),y
     lda #165:iny:sta (dest),y
@@ -188,7 +199,7 @@
     toggle = zp_tmp
    
     ; TODO: WAIT FOR VSYNC? OR MAYBE OUR CALLER SHOULD DO IT SO INITIAL UPDATE DOESN'T REQUIRE MULTIPLE FRAMES?
-    ldyx_mode_7 10,6 \ TODO: MAGIC CONSTANTS - POSS OK IF NOT DUPLICATED ELSEWHERE
+    ldyx_mode_7 led_top_left_x, led_top_left_y
     stx dest:sty dest+1
     ldx #0:lda option_led_colour:bne not_black
     ldx #%01011111:lda #colour_white
@@ -196,8 +207,8 @@
     stx toggle
     clc:adc #mode_7_graphics_colour_base
     ldy #0:sta (dest),y
-    ldy #40:sta (dest),y
-    ldy #80:sta (dest),y
+    ldy #mode_7_width:sta (dest),y
+    ldy #mode_7_width*2:sta (dest),y
     inc_word dest
     lda option_led_shape:asl a:clc:adc option_led_size:asl a:asl a:asl a:asl a
     clc:adc #lo(mode_7_led_bitmap_base):sta src
@@ -236,7 +247,8 @@
     ldy #0
 .loop
     lda frequency_text,x
-    sta mode_7_screen + (11 * mode_7_width) + 4,y
+    ; TODO: NOT JUST HERE, SOMETIMES I USE THIS VERY SPACEY ARITHMETIC STYLE, SOMETIMES I USE A MORE COMPACT ONE - STANDARDISE (PROB ON MORE COMPACT)
+    sta mode_7_screen + (led_frequency_y * mode_7_width) + led_frequency_x,y
     inx
     iny:cpy #3:bne loop
     rts
@@ -250,7 +262,7 @@
     ldy #0
 .loop
     lda spread_text,x
-    sta mode_7_screen + (12 * mode_7_width) + 8,y
+    sta mode_7_screen + (led_spread_y * mode_7_width) + led_spread_x,y
     inx
     iny:cpy #2:bne loop
     rts
@@ -265,7 +277,7 @@
     ldy #0
 .loop
     lda text_uniformly,x
-    sta mode_7_screen + (13 * mode_7_width) + 4,y
+    sta mode_7_screen + (led_distribution_y * mode_7_width) + led_distribution_x,y
     inx
     iny:cpy #text_binomially-text_uniformly:bne loop
     rts
