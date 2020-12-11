@@ -3,23 +3,6 @@ include "constants.asm"
 
     org &70
     guard &90
-.led_group_count
-    equb 0
-.frame_count
-    equb 0
-.inverse_raster_row
-    equb 0
-.ptr
-    equw 0
-.screen_ptr
-    equw 0
-.working_index
-    equb 0
-.led_x
-    equb 0
-.led_y
-    equb 0
-
     ; random.asm workspace; some of this could potentially overlap with other
     ; zero page uses if necessary, but for now we're not short on space.
 .SEED0
@@ -37,8 +20,22 @@ include "constants.asm"
 .REM
     equb 0
 
+    ; Common zero page workspace for other code.
+.src
+    equw 0
+.dest ; TODO: RENAME TO "dst"?
+    equw 0
+.zp_tmp
+    skip 4
+
+    ; The remaining zero page space is carved up into separate overlapping
+    ; allocations for the menu and animation code, which communicate via
+    ; variables held outside zero page.
+.shared_zp_start
+shared_zp_end = &90
+
     org &2000
-    guard &5800
+    guard mode_4_screen
 
 
 .start

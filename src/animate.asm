@@ -5,6 +5,27 @@
     slow_palette = TRUE
     \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
 
+    animate_start = *
+
+    org shared_zp_start
+    guard shared_zp_end
+    clear shared_zp_start, shared_zp_end
+.led_group_count
+    equb 0
+.frame_count
+    equb 0
+.inverse_raster_row
+    equb 0
+.working_index
+    equb 0
+.led_x
+    equb 0
+.led_y
+    equb 0
+
+    org animate_start
+    guard mode_4_screen
+
     irq1v = &204
 
     ula_palette = &fe21
@@ -78,21 +99,20 @@ endmacro
     jsr compile_led_shape
 
     \ Set up the LEDs based on the panel template.
-    \ TODO: RENAME PTR TO TEMPLATE_PTR OR SOMETHING?
     lda option_panel_template:jsr get_panel_template_a_address
-    stx ptr:sty ptr+1
+    stx src:sty src+1
 
     \ The first two bytes of the template are the number of LEDs; we need to set up
     \ the per-frame initialisation accordingly, and if we don't have an exact
     \ multiple of 256 LEDs we need to take that into account by starting with X>0.
-    ldy #1:lda (ptr),y:sta lda_imm_led_groups+1
-    dey:lda (ptr),y:beq exact_multiple
+    ldy #1:lda (src),y:sta lda_imm_led_groups+1
+    dey:lda (src),y:beq exact_multiple
     inc lda_imm_led_groups+1
-    lda #0:sec:sbc (ptr),y
+    lda #0:sec:sbc (src),y
 .exact_multiple
     sta lda_imm_initial_x+1:sta working_index
-    clc:lda ptr:adc #2:sta ptr
-    inc_word_high ptr+1
+    clc:lda src:adc #2:sta src
+    inc_word_high src+1
 
     \ TODO PROB WANT TO PUT A INTO X OR SOMETHING FOR FOLLOWING CODE TO WORK WITH
 
@@ -104,11 +124,11 @@ endmacro
     ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
     ; cell; for small LEDs, "Y=0" is scanline 2.
     lda option_led_size:clc:adc #1
-    sta screen_ptr
-    lda #&58:sta screen_ptr+1
+    sta dest
+    lda #&58:sta dest+1
     \ TODO WE NEED TO SET UP inverse_row_table, address_{low,high}_table - OTHER TABLES CAN SAFELY BE OVER-FILLED
 .SFTODOLOOP
-    ldy #0:lda (ptr),y
+    ldy #0:lda (src),y
     ldx #8
 .SFTODOLOOP2
     asl a
@@ -118,10 +138,10 @@ endmacro
     lda #32:sec:sbc led_y
 .SFTODOPATCHME1
     sta &ff00,y \ patched
-    lda screen_ptr
+    lda dest
 .SFTODOPATCHME2
     sta &ff00,y \ patched
-    lda screen_ptr+1
+    lda dest+1
 .SFTODOPATCHME3
     sta &ff00,y \ patched
     inc working_index
@@ -131,12 +151,12 @@ endmacro
     inc SFTODOPATCHME3+2
 .not_next_led_group
 .empty
-    lda screen_ptr:clc:adc #8:sta screen_ptr
-    inc_word_high screen_ptr+1
+    lda dest:clc:adc #8:sta dest
+    inc_word_high dest+1
     inc led_x
     pla
     dex:bne SFTODOLOOP2
-    inc_word ptr
+    inc_word src
     lda led_x:cmp #40:bne SFTODOLOOP
     lda #0:sta led_x
     inc led_y
@@ -145,24 +165,24 @@ endmacro
     ; Initialise the LED periods using randomly generated values based on the
     ; chosen parameters.
 
-    ; Set ptr=frequency_spread_parameters+((option_led_frequency*num_spreads)+option_led_spread)*4.
+    ; Set src=frequency_spread_parameters+((option_led_frequency*num_spreads)+option_led_spread)*4.
     ; We just do a naive multiplication by addition here, it's simple and not
     ; at all critical.
-    lda option_led_spread:sta ptr
-    lda #0:sta ptr+1
+    lda option_led_spread:sta src
+    lda #0:sta src+1
     ldx option_led_frequency:beq multiply_done
 .multiply_loop
-    clc:lda ptr:adc #num_spreads:sta ptr
-    inc_word_high ptr+1
+    clc:lda src:adc #num_spreads:sta src
+    inc_word_high src+1
     dex:bne multiply_loop
 .multiply_done
-    asl ptr:asl ptr+1
-    asl ptr:asl ptr+1
-    clc:lda ptr:adc #lo(frequency_spread_parameters):sta ptr
-    lda ptr+1:adc #hi(frequency_spread_parameters):sta ptr+1
+    asl src:asl src+1
+    asl src:asl src+1
+    clc:lda src:adc #lo(frequency_spread_parameters):sta src
+    lda src+1:adc #hi(frequency_spread_parameters):sta src+1
 
     ; Set the runtime ticks-per-frame.
-    ldy #0:lda (ptr),y
+    ldy #0:lda (src),y
     sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
 
     ; Generate the random LED periods.
@@ -171,9 +191,9 @@ parameter_a = frame_count
 parameter_b = inverse_raster_row
 parameter_c = led_x
 period = led_y
-    iny:lda (ptr),y:sta parameter_a
-    iny:lda (ptr),y:sta parameter_b
-    iny:lda (ptr),y:sta parameter_c
+    iny:lda (src),y:sta parameter_a
+    iny:lda (src),y:sta parameter_b
+    iny:lda (src),y:sta parameter_c
     lda option_led_distribution:bne binomially_distributed
     clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
     lda #0:sta parameter_c
@@ -291,10 +311,10 @@ endif
     \ Toggle the LED's state.
 .lda_address_low_x
     lda &ff00,x \ patched
-    sta screen_ptr
+    sta dest
 .lda_address_high_x
     lda &ff00,x \ patched
-    sta screen_ptr+1
+    sta dest+1
     ; We're about to modify screen memory, so if the raster is currently on this
     ; row, wait for it to pass.
 .lda_inverse_row_x
@@ -334,7 +354,7 @@ led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I 
         else
             iny
         endif
-        sta (screen_ptr),y
+        sta (dest),y
     next
     advance_to_next_led_fall_through
 
@@ -409,10 +429,7 @@ endif
 ; TODO: THIS SHOULD TAKE ADVANTAGE OF CMOS INSTRUCTIONS IF AVAILABLE
 .compile_led_shape
 {
-; TODO: PROPER ZP ALLOCATION
-    src = ptr
-    dest = screen_ptr
-    runtime_y = working_index
+    runtime_y = zp_tmp
 
     stx src:sty src+1
     lda #lo(turn_led_on_start):sta dest
@@ -437,11 +454,11 @@ endif
     ; We're on a 65C02 and we're modifying scanline 0, so we can use the
     ; zp indirect addressing mode.
     lda #opcode_sta_zp_ind:jsr emit
-    lda #screen_ptr:jsr emit
+    lda #dest:jsr emit
     jmp line_loop
 .not_65c02_line_0
-    ; Can we get set Y appropriately using iny or dey? (This is no faster than
-    ; "ldy #n", but it's shorter.)
+    ; Can we set Y appropriately using iny or dey? (This is no faster than "ldy
+    ; #n", but it's shorter.)
     inc runtime_y:cmp runtime_y:beq emit_iny
     dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
     ; No, we can't, so emit "ldy #n".
@@ -456,9 +473,9 @@ endif
 .emit_iny_dey
     jsr emit
 .y_set
-    ; Y is now set, so emit "sta (screen_ptr),y".
+    ; Y is now set, so emit "sta (dest),y".
     lda #opcode_sta_zp_ind_y:jsr emit
-    lda #screen_ptr:jsr emit
+    lda #dest:jsr emit
     jmp line_loop
 .line_loop_done
     inc_word src

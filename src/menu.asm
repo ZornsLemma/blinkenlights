@@ -2,11 +2,16 @@
     panel_template_top_left_x = 19
     panel_template_top_left_y = 9
 
-    ; TODO: PROPER ALLOCATION OF ZERO PAGE
-    src = ptr
-    dest = screen_ptr
-    toggle = working_index
-  
+    menu_start = *
+
+    org shared_zp_start
+    guard shared_zp_end
+.working_index
+    equb 0
+
+    org menu_start
+    guard mode_4_screen
+ 
     ; TODO: I probably need to remove the "variable" elements from the template, to avoid
     ; them briefly flickering into view before we update them after copying the template.
     lda #7:jsr set_mode
@@ -34,31 +39,30 @@
     ; Repeatedly check for keys pressed and process them.
 .input_loop
 {
-current_index = working_index ; TODO PROPER ZP ALLOC
-    lda #-3 and &ff:sta current_index
+    lda #-3 and &ff:sta working_index
 .key_loop
-    clc:lda current_index:adc #3:sta current_index
+    clc:lda working_index:adc #3:sta working_index
     tay:ldx input_table,y:beq input_loop
     lda #osbyte_read_key:ldy #&ff:jsr osbyte
     inx:bne key_loop
-    ; The key at current_index is pressed; deal with it. We assume the handler
-    ; subroutine corrupts all memory in zero page, so we stack current_index
+    ; The key at working_index is pressed; deal with it. We assume the handler
+    ; subroutine corrupts all memory in zero page, so we stack working_index
     ; first.
     jsr update_random_seed
-    lda current_index:pha:tay
-    lda input_table+1,y:sta ptr
-    lda input_table+2,y:sta ptr+1
-    jsr jmp_via_ptr
+    lda working_index:pha:tay
+    lda input_table+1,y:sta src
+    lda input_table+2,y:sta src+1
+    jsr jmp_via_src
     ; Now wait until the key is released before continuing with the input loop.
-    pla:sta current_index
+    pla:sta working_index
 .still_down
-    ldy current_index:ldx input_table,y
+    ldy working_index:ldx input_table,y
     lda #osbyte_read_key:ldy #&ff:jsr osbyte
     inx:beq still_down
     bne key_loop
 
-.jmp_via_ptr
-    jmp (ptr)
+.jmp_via_src
+    jmp (src)
 }
 
 .input_table
@@ -181,6 +185,8 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 ; options.
 .show_led_visual_options
 {
+    toggle = zp_tmp
+   
     ; TODO: WAIT FOR VSYNC? OR MAYBE OUR CALLER SHOULD DO IT SO INITIAL UPDATE DOESN'T REQUIRE MULTIPLE FRAMES?
     ldyx_mode_7 10,6 \ TODO: MAGIC CONSTANTS - POSS OK IF NOT DUPLICATED ELSEWHERE
     stx dest:sty dest+1
@@ -305,11 +311,10 @@ current_index = working_index ; TODO PROPER ZP ALLOC
 \ Display the panel template at YX using mode 7 graphics at panel_template_top_left_[xy].
 .show_panel_template
 {
-\ TODO: WE SHOULD HAVE A GENERAL "TMP ZP" AREA AND USE THAT, RATHER THAN PRE-ALLOCATING *BASED* ON THE FLASHING CODE
-pixel_bitmap = working_index \ TODO HACK
-template_rows_left = inverse_raster_row \ TODO HACK
-sixel_inverse_row = frame_count \ TODO HACK
-x_group_count = led_group_count \ TODO HACK
+    pixel_bitmap = zp_tmp
+    template_rows_left = zp_tmp + 1
+    sixel_inverse_row = zp_tmp + 2
+    x_group_count = zp_tmp + 3
 
 \ TODO: Not too happy with some of these names
 sixel_width = 2
@@ -321,11 +326,11 @@ x_groups = width_chars / x_group_chars
     \ SFTODO: WAIT FOR VSYNC?
     \ SFTODO: DO I NEED TO DO ANYHTHING TO BLANK OUT ANYTHING ALREADY THERE?
     \ Skip the count of LEDs at the start of the panel template.
-    txa:clc:adc #2:sta ptr
-    tya:adc #0:sta ptr+1
+    txa:clc:adc #2:sta src
+    tya:adc #0:sta src+1
     screen_address_top_left = mode_7_screen + panel_template_top_left_y*mode_7_width + panel_template_top_left_x
-    lda #lo(screen_address_top_left):sta screen_ptr
-    lda #hi(screen_address_top_left):sta screen_ptr+1
+    lda #lo(screen_address_top_left):sta dest
+    lda #hi(screen_address_top_left):sta dest+1
     lda #panel_height:sta template_rows_left
 .template_row_loop
     lda #sixel_height-1:sta sixel_inverse_row
@@ -335,7 +340,7 @@ x_groups = width_chars / x_group_chars
     clc:adc #lo(pixel_to_sixel_row_table):sta lda_pixel_to_sixel_row_table_y+1
     lda #hi(pixel_to_sixel_row_table):adc #0:sta lda_pixel_to_sixel_row_table_y+2
 .x_group_loop
-    ldy #0:lda (ptr),y:sta pixel_bitmap
+    ldy #0:lda (src),y:sta pixel_bitmap
     ldx #x_group_chars-1
 .sixel_for_x_group_loop
     lda #0
@@ -345,20 +350,20 @@ x_groups = width_chars / x_group_chars
 .lda_pixel_to_sixel_row_table_y
     lda &ffff,y \ patched
     ldy sixel_inverse_row:cpy #sixel_height-1:bne not_first_sixel_row
-    ldy #0:sta (screen_ptr),y:jmp done_first_sixel_row
+    ldy #0:sta (dest),y:jmp done_first_sixel_row
 .not_first_sixel_row
-    ldy #0:ora (screen_ptr),y:sta (screen_ptr),y
+    ldy #0:ora (dest),y:sta (dest),y
 .done_first_sixel_row
-    inc_word screen_ptr
+    inc_word dest
     dex:bpl sixel_for_x_group_loop
-    inc_word ptr
+    inc_word src
     dec x_group_count:bpl x_group_loop
     dec template_rows_left:beq done
-    sec:lda screen_ptr:sbc #width_chars:sta screen_ptr
-    bcs no_borrow:dec screen_ptr+1:.no_borrow
+    sec:lda dest:sbc #width_chars:sta dest
+    bcs no_borrow:dec dest+1:.no_borrow
     dec sixel_inverse_row:bpl sixel_row_loop
-    clc:lda screen_ptr:adc #mode_7_width:sta screen_ptr
-    inc_word_high screen_ptr+1
+    clc:lda dest:adc #mode_7_width:sta dest
+    inc_word_high dest+1
     jmp template_row_loop
 .done
     rts

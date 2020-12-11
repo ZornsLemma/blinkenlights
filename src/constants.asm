@@ -4,6 +4,8 @@ vdu_set_mode = 22
 colour_red = 1
 colour_white = 7
 
+mode_4_screen = &5800
+
 mode_7_screen = &7c00
 mode_7_width = 40
 mode_7_graphics_colour_base = 144

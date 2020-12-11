@@ -6,7 +6,7 @@ eot = 128
     pha
     lda #vdu_set_mode:jsr oswrch
     pla:jsr oswrch
-    jsr print_string_inline:equb 23, 1, 0, 0,  0, 0, 0, 0, 0, 0, eot
+    jsr print_string_inline:equb 23, 1, 0, 0, 0, 0, 0, 0, 0, 0, eot
     rts
 
 ; Set logical colour X to physical colour Y.
@@ -21,6 +21,8 @@ eot = 128
 ; OSWRCH.
 .print_string_inline
 {
+    ptr = zp_tmp
+   
     pla:sta ptr
     pla:sta ptr+1
     ldy #0
@@ -35,7 +37,3 @@ eot = 128
     lda ptr:pha
     rts
 }
-
-; Print the string at YX (terminated by eot) using OSWRCH.
-.print_string_yx
-.TODO2 jmp TODO2
