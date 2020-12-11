@@ -343,7 +343,7 @@ x_groups = width_chars / x_group_chars
     asl pixel_bitmap:rol a
     tay
 .lda_pixel_to_sixel_row_table_y
-    lda $ffff,y \ patched
+    lda &ffff,y \ patched
     ldy sixel_inverse_row:cpy #sixel_height-1:bne not_first_sixel_row
     ldy #0:sta (screen_ptr),y:jmp done_first_sixel_row
 .not_first_sixel_row

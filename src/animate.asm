@@ -262,7 +262,7 @@ endif
     \ Decrement this LED's count and do nothing else if it's not yet zero.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
-    lda $ff00,x \ patched
+    lda &ff00,x \ patched
     sec
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
@@ -271,13 +271,13 @@ endif
     sbc #&ff \ patched
     bmi toggle_led
 .sta_count_x_1
-    sta $ff00,x \ patched
+    sta &ff00,x \ patched
     advance_to_next_led
 .not_going_to_toggle
 .sbc_imm_ticks_per_frame_2
     sbc #&ff \ patched
 .sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
-    sta $ff00,x \ patched
+    sta &ff00,x \ patched
     advance_to_next_led
 
     \ Toggle this LED.
@@ -285,20 +285,20 @@ endif
     \ This LED's count has gone negative; add the period.
     clc
 .adc_period_x
-    adc $ff00,x \ patched
+    adc &ff00,x \ patched
 .sta_count_x_2
-    sta $ff00,x \ patched
+    sta &ff00,x \ patched
     \ Toggle the LED's state.
 .lda_address_low_x
-    lda $ff00,x \ patched
+    lda &ff00,x \ patched
     sta screen_ptr
 .lda_address_high_x
-    lda $ff00,x \ patched
+    lda &ff00,x \ patched
     sta screen_ptr+1
     ; We're about to modify screen memory, so if the raster is currently on this
     ; row, wait for it to pass.
 .lda_inverse_row_x
-    lda $ff00,x \ patched
+    lda &ff00,x \ patched
 .raster_loop
     cmp inverse_raster_row
     beq raster_loop
@@ -309,10 +309,10 @@ endif
     ; if there's a little jitter or if the raster enters this character row
     ; immediately after the above test passed.
 .lda_state_x
-    lda $ff00,x \ patched
+    lda &ff00,x \ patched
     eor #255
 .sta_state_x
-    sta $ff00,x \ patched
+    sta &ff00,x \ patched
     beq turn_led_off
 
     ; compile_led_shape generates code at runtime here
