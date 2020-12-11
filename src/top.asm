@@ -21,7 +21,7 @@ include "constants.asm"
     equb 0
 
     ; random.asm workspace; some of this could potentially overlap with other
-    ; zero page users if necessary, but for now we don't need to do this.
+    ; zero page uses if necessary, but for now we're not short on space.
 .SEED0
     equb 0
 .SEED1
@@ -40,28 +40,6 @@ include "constants.asm"
     org &2000
     guard &5800
 
-    show_missed_vsync = FALSE
-    show_rows = FALSE
-    assert not(show_missed_vsync and show_rows)
-    slow_palette = TRUE
-    \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
-
-    panel_template_top_left_x = 19
-    panel_template_top_left_y = 9
-
-    irq1v = &204
-
-    ula_palette = &fe21
-
-    system_via_register_a = &fe41
-    system_via_interrupt_flag_register = &fe4d
-    system_via_interrupt_enable_register = &fe4e
-
-    user_via_timer_1_low_order_latch = &fe64
-    user_via_timer_1_high_order_counter = &fe65
-    user_via_auxiliary_control_register = &fe6b
-    user_via_interrupt_flag_register = &fe6d
-    user_via_interrupt_enable_register = &fe6e
 
 .start
     ; Refuse to run on a second processor. (Because we want to re-enter this
@@ -90,6 +68,7 @@ include "constants.asm"
     include "animate.asm"
     include "utilities.asm"
 
+    ; TODO: Might want to tweak how the auto-generation works, have some Python code generate panel_template_list and a count of number of entries and we just do a single "include" which does everything
 .panel_template_circle_32
     incbin "../res/circle-32.bin"
 .panel_template_rectangle_32
@@ -121,6 +100,8 @@ include "constants.asm"
 
 .end
 
+    ; Uninitialised data tables which we allocate at assembly time but which don't
+    ; need to be saved as part of the binary.
     align &100
 .count_table
     skip led_count ; TODO: rename this max_led_count?

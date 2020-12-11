@@ -1,4 +1,7 @@
 {
+    panel_template_top_left_x = 19
+    panel_template_top_left_y = 9
+
     ; TODO: PROPER ALLOCATION OF ZERO PAGE
     src = ptr
     dest = screen_ptr

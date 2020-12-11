@@ -1,4 +1,23 @@
 {
+    show_missed_vsync = FALSE
+    show_rows = FALSE
+    assert not(show_missed_vsync and show_rows)
+    slow_palette = TRUE
+    \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
+
+    irq1v = &204
+
+    ula_palette = &fe21
+
+    system_via_register_a = &fe41
+    system_via_interrupt_flag_register = &fe4d
+    system_via_interrupt_enable_register = &fe4e
+
+    user_via_timer_1_low_order_latch = &fe64
+    user_via_timer_1_high_order_counter = &fe65
+    user_via_auxiliary_control_register = &fe6b
+    user_via_interrupt_flag_register = &fe6d
+    user_via_interrupt_enable_register = &fe6e
 
 macro set_background_a
     sta ula_palette
