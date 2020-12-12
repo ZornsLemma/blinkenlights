@@ -23,8 +23,8 @@
     guard mode_4_screen
  
     ; TODO: I probably need to remove the "variable" elements from the template, to avoid
-    ; them briefly flickering into view before we update them after copying the template.
-    ; TODO: Wait for vsync?
+    ; them briefly flickering into view before we update them after copying the template. Unless vsyncing means the user never gets a chance to see them.
+    jsr wait_for_vsync
     {
         ldx #0
     .loop
@@ -35,15 +35,14 @@
         inx
         bne loop
     }
-    jsr update_random_seed
+    jsr show_led_visual_options_no_vsync
+    jsr show_led_frequency_no_vsync
+    jsr show_led_spread_no_vsync
+    jsr show_led_distribution_no_vsync
+    jsr show_panel_colour_no_vsync
+    jsr show_panel_template_SFTODO2_no_vsync
 
-    ; TODO WAIT FOR VSYNC?
-    jsr show_led_visual_options
-    jsr show_led_frequency
-    jsr show_led_spread
-    jsr show_led_distribution
-    jsr show_panel_colour
-    jsr show_panel_template_SFTODO2
+    jsr update_random_seed
 
     ; Repeatedly check for keys pressed and process them.
 .input_loop
@@ -141,6 +140,8 @@
 }
 
 .show_panel_colour
+    jsr wait_for_vsync
+.show_panel_colour_no_vsync
     lda option_panel_colour
     ldyx_mode_7 panel_colour_top_left_x, panel_colour_top_left_y
     fall_through_to show_colour
@@ -181,6 +182,9 @@
 }
 
 .show_panel_template_SFTODO2
+    ; TODO: This vsync consistenty causes "tearing"; probably need to alter how this works
+    jsr wait_for_vsync
+.show_panel_template_SFTODO2_no_vsync
     lda option_panel_template:jsr get_panel_template_a_address
     jmp show_panel_template ; SFTODO JUST FALL THRU? THIS NEEDS MOVING INTO THIS FILE ANYWAY
 
@@ -194,6 +198,8 @@
 ; Update the LED image in the menu to reflect the colour, shape and size
 ; options.
 .show_led_visual_options
+    jsr wait_for_vsync
+.show_led_visual_options_no_vsync
 {
     toggle = zp_tmp
    
@@ -239,8 +245,9 @@
 }
 
 .show_led_frequency
+    jsr wait_for_vsync
+.show_led_frequency_no_vsync
 {
-    ; TODO WAIT FOR VSYNC?
     ; All the entries at frequency_text are exactly three characters long.
     lda option_led_frequency:asl a:adc option_led_frequency:tax
     ldy #0
@@ -254,8 +261,9 @@
 }
 
 .show_led_spread
+    jsr wait_for_vsync
+.show_led_spread_no_vsync
 {
-    ; TODO VSYNC?
     ; All the entries at spread_text are exactly two characters long.
     lda option_led_spread:asl a:tax
     ldy #0
@@ -268,8 +276,9 @@
 }
 
 .show_led_distribution
+    jsr wait_for_vsync
+.show_led_distribution_no_vsync
 {
-    ; TODO VSYNC
     ldx option_led_distribution:beq uniformly
     ldx #text_binomially-text_uniformly
 .uniformly
@@ -334,8 +343,6 @@ width_chars = panel_width/sixel_width
 x_group_chars = 4
 x_groups = width_chars / x_group_chars
 
-    \ SFTODO: WAIT FOR VSYNC?
-    \ SFTODO: DO I NEED TO DO ANYHTHING TO BLANK OUT ANYTHING ALREADY THERE?
     \ Skip the count of LEDs at the start of the panel template.
     txa:clc:adc #2:sta src
     tya:adc #0:sta src+1
@@ -399,6 +406,9 @@ x_groups = width_chars / x_group_chars
     equb %10100001 \ %10
     equb %10100011 \ %11
 }
+
+.wait_for_vsync
+    lda #osbyte_wait_for_vsync:jmp osbyte
 }
 
 .mode_7_led_bitmap_base

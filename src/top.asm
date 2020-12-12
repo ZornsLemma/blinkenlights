@@ -59,9 +59,9 @@ shared_zp_end = &90
     ldy #hi(key10_command)
     jsr oscli
 
-    ; See if we're running on 65C02 or not. By selecting mode 7 now we know we
-    ; can use the memory between mode_4_screen and mode_7_screen for our
-    ; test code.
+    ; See if we're running on a 65C02 or not. By selecting mode 7 now we know we
+    ; can use the memory between mode_4_screen and mode_7_screen for our test
+    ; code.
     {
         is_cmos = mode_4_screen+&200
         is_nmos = mode_4_screen+&300

@@ -17,6 +17,7 @@ panel_width = 40
 panel_height = 32
 led_count = panel_width*panel_height
 
+osbyte_wait_for_vsync = &13
 osbyte_flush_buffer = &15
 osbyte_read_key = &81
 osbyte_read_high_order_address = &82
