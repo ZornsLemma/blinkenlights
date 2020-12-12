@@ -24,7 +24,6 @@
  
     ; TODO: I probably need to remove the "variable" elements from the template, to avoid
     ; them briefly flickering into view before we update them after copying the template.
-    lda #7:jsr set_mode
     ; TODO: Wait for vsync?
     {
         ldx #0

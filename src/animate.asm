@@ -453,7 +453,7 @@ endif
     inc_word src
     ldy #0:lda (src),y:bmi line_loop_done
     ; A now contains the scanline index, held in Y at runtime.
-    ldx is_65c02:beq not_65c02_line_0
+    ldx cpu_type:beq not_65c02_line_0
     tax:bne not_65c02_line_0
     ; We're on a 65C02 and we're modifying scanline 0, so we can use the
     ; zp indirect addressing mode.
@@ -508,8 +508,6 @@ endif
     ldy #0:sta (dest),y
     inc_word dest
     rts
-
-.is_65c02 equb 1 ; TODO: SHOULD AUTO-DETECT AT RUNTIME!
 }
 
 \ TODO: END EXPERIMENTAL

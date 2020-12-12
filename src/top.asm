@@ -59,10 +59,37 @@ shared_zp_end = &90
     ldy #hi(key10_command)
     jsr oscli
 
+    ; See if we're running on 65C02 or not. By selecting mode 7 now we know we
+    ; can use the memory between mode_4_screen and mode_7_screen for our
+    ; test code.
+    {
+        is_cmos = mode_4_screen+&200
+        is_nmos = mode_4_screen+&300
+        lda #7:jsr set_mode
+        lda #opcode_lda_imm:sta is_cmos:lda #1:sta is_cmos+1
+        lda #opcode_rts:sta is_nmos:sta is_cmos+2
+        assert lo(is_cmos) == lo(is_nmos)
+        lda #lo(is_cmos):sta mode_4_screen+&ff
+        lda #hi(is_cmos):sta mode_4_screen+&100
+        lda #hi(is_nmos):sta mode_4_screen
+        lda #0
+        jsr jmp_indirect_for_cmos_test
+        sta cpu_type
+    }
+
     ; Execution falls through into the code in menu.asm.
     include "menu.asm"
     include "animate.asm"
     include "utilities.asm"
+
+.jmp_indirect_for_cmos_test
+    ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
+    ; generating an error.
+    equb opcode_jmp_indirect
+    equw mode_4_screen+&ff
+
+.cpu_type
+    equb 0 ; set at runtime to 0 for NMOS, 1 for CMOS
 
     ; TODO: Might want to tweak how the auto-generation works, have some Python code generate panel_template_list and a count of number of entries and we just do a single "include" which does everything
 .panel_template_circle_32
