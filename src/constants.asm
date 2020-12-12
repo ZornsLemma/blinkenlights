@@ -5,6 +5,9 @@ colour_red = 1
 colour_white = 7
 
 mode_4_screen = &5800
+mode_4_width = 40
+mode_4_height = 32
+mode_4_char_lines = 8
 
 mode_7_screen = &7c00
 mode_7_width = 40

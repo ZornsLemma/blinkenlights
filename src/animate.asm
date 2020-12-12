@@ -5,6 +5,14 @@
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
 
+    scanline_to_interrupt_at = -2
+    vsync_position = 35
+    total_rows = 39
+    us_per_scanline = 64
+    us_per_row = 8*us_per_scanline
+    vsync_to_visible_start_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    row_us = us_per_row - 2
+
     animate_start = *
 
     org shared_zp_start
@@ -127,13 +135,15 @@ endmacro
         lda #&58:sta dest+1
     .outer_loop
         ldy #0:lda (src),y
+        ; A contains a bitmap representing potential LED positions from led_x to
+        ; led_x+7 in row led_y.
         ldx #8
     .group_of_8_loop
         asl a
         pha
         bcc empty
         ldy working_index
-        lda #32:sec:sbc led_y
+        lda #mode_4_height:sec:sbc led_y
     .sta_inverse_row_table_x
         sta &ff00,y \ patched
         lda dest
@@ -149,80 +159,74 @@ endmacro
         inc sta_address_high_table_x+2
     .not_next_led_group
     .empty
-        lda dest:clc:adc #8:sta dest
+        lda dest:clc:adc #mode_4_char_lines:sta dest
         inc_word_high dest+1
         inc led_x
         pla
         dex:bne group_of_8_loop
         inc_word src
-        lda led_x:cmp #40:bne outer_loop
+        lda led_x:cmp #mode_4_width:bne outer_loop
         lda #0:sta led_x
         inc led_y
-        lda led_y:cmp #32:bne outer_loop
+        lda led_y:cmp #mode_4_height:bne outer_loop
     }
 
     ; Initialise the LED periods using randomly generated values based on the
     ; chosen parameters.
+    {
+        parameter_a = zp_tmp
+        parameter_b = zp_tmp+1
+        parameter_c = zp_tmp+2
+        period = zp_tmp+3
 
-    ; Set src=frequency_spread_parameters+((option_led_frequency*num_spreads)+option_led_spread)*4.
-    ; We just do a naive multiplication by addition here, it's simple and not
-    ; at all critical.
-    lda option_led_spread:sta src
-    lda #0:sta src+1
-    ldx option_led_frequency:beq multiply_done
-.multiply_loop
-    clc:lda src:adc #num_spreads:sta src
-    inc_word_high src+1
-    dex:bne multiply_loop
-.multiply_done
-    asl src:asl src+1
-    asl src:asl src+1
-    clc:lda src:adc #lo(frequency_spread_parameters):sta src
-    lda src+1:adc #hi(frequency_spread_parameters):sta src+1
+        ; Set src=frequency_spread_parameters +
+        ;         4*((option_led_frequency * num_spreads) + option_led_spread).
+        ; We just do a naive multiplication by addition here, it's simple and
+        ; not performance-sensitive.
+        lda option_led_spread:sta src
+        lda #0:sta src+1
+        ldx option_led_frequency:beq multiply_done
+    .multiply_loop
+        clc:lda src:adc #num_spreads:sta src
+        inc_word_high src+1
+        dex:bne multiply_loop
+    .multiply_done
+        asl src:asl src+1
+        asl src:asl src+1
+        clc:lda src:adc #lo(frequency_spread_parameters):sta src
+        lda src+1:adc #hi(frequency_spread_parameters):sta src+1
 
-    ; Set the runtime ticks-per-frame.
-    ldy #0:lda (src),y
-    sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
+        ; Set the runtime ticks-per-frame.
+        ldy #0:lda (src),y
+        sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
 
-    ; Generate the random LED periods.
-; TODO: PROPER ZP ALLOC
-parameter_a = frame_count
-parameter_b = inverse_raster_row
-parameter_c = led_x
-period = led_y
-    iny:lda (src),y:sta parameter_a
-    iny:lda (src),y:sta parameter_b
-    iny:lda (src),y:sta parameter_c
-    lda option_led_distribution:bne binomially_distributed
-    clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
-    lda #0:sta parameter_c
-.binomially_distributed
-    lda lda_imm_led_groups+1:sta led_group_count
-    lda lda_imm_initial_x+1:sta working_index
-    lda #hi(period_table):sta sta_period_table_x+2
-.generate_random_led_loop
-    lda parameter_a:sta period
-    lda parameter_b:jsr urandom8:clc:adc period:sta period
-    lda parameter_c:beq no_parameter_c
-    jsr urandom8:clc:adc period:sta period
-.no_parameter_c
-    ldx working_index
-    lda period
-.sta_period_table_x
-    sta &ff00,x \ patched
-    inc working_index:bne generate_random_led_loop
-    inc sta_period_table_x+2
-    dec led_group_count:bne generate_random_led_loop
-}
+        ; Generate the random LED periods.
+        iny:lda (src),y:sta parameter_a
+        iny:lda (src),y:sta parameter_b
+        iny:lda (src),y:sta parameter_c
+        lda option_led_distribution:bne binomially_distributed
+        clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
+        lda #0:sta parameter_c
+    .binomially_distributed
+        lda lda_imm_led_groups+1:sta led_group_count
+        lda lda_imm_initial_x+1:sta working_index
+        lda #hi(period_table):sta sta_period_table_x+2
+    .generate_random_led_loop
+        lda parameter_a:sta period
+        lda parameter_b:jsr urandom8:clc:adc period:sta period
+        lda parameter_c:beq no_parameter_c
+        jsr urandom8:clc:adc period:sta period
+    .no_parameter_c
+        ldx working_index
+        lda period
+    .sta_period_table_x
+        sta &ff00,x \ patched
+        inc working_index:bne generate_random_led_loop
+        inc sta_period_table_x+2
+        dec led_group_count:bne generate_random_led_loop
+    }
 
     \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-    scanline_to_interrupt_at = -2
-    vsync_position = 35
-    total_rows = 39
-    us_per_scanline = 64
-    us_per_row = 8*us_per_scanline
-    vsync_to_visible_start_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    row_us = us_per_row - 2
 
     sei
     \ We're going to shut the OS out of the loop to make things more stable, so
@@ -276,7 +280,7 @@ if show_missed_vsync
 .SFTODOHACK
 endif
 
-.led_loop
+.^led_loop
 
     \ Decrement this LED's count and do nothing else if it's not yet zero.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
@@ -335,11 +339,11 @@ endif
     beq turn_led_off
 
     ; compile_led_shape generates code at runtime here
-.turn_led_on_start
+.^turn_led_on_start
     brk
     equs 0, "No LED!", 0
     skip 32 ; TODO: MAGIC CONSTANT
-.turn_led_on_end
+.^turn_led_on_end
 
 led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I CAN REWRITE THE FOLLOWING CODE - I SHOULD DYNAMICALLY GENERATE THIS AT START OF ANIMATION, THAY WAY I CAN USE THE RIGHT IMPLICIT LED_MAX_LINE AND I CAN ALSO USE CMOS INSTR IF AVAIL
 .turn_led_off
@@ -357,7 +361,7 @@ led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I 
     next
     advance_to_next_led_fall_through
 
-.advance_to_next_led_group
+.^advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
     inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
@@ -370,6 +374,7 @@ led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I 
     jmp led_loop
 .forever_loop_indirect
     jmp forever_loop
+}
 
 ; inverse_raster_row is used to track where we are on the screen, in terms of
 ; character rows. This is used to avoid updating LEDs when the raster is passing
