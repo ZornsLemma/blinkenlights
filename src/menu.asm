@@ -151,7 +151,6 @@
 ; TODO: Use oswrch here instead of direct screen access?
 .show_colour
 {
-    ; TODO: Wait for vsync?
     stx dest:sty dest+1
     tax:beq black
     clc:adc #mode_7_graphics_colour_base:pha
@@ -196,7 +195,6 @@
 {
     toggle = zp_tmp
    
-    ; TODO: WAIT FOR VSYNC? OR MAYBE OUR CALLER SHOULD DO IT SO INITIAL UPDATE DOESN'T REQUIRE MULTIPLE FRAMES?
     ldyx_mode_7 led_top_left_x, led_top_left_y
     stx dest:sty dest+1
     ldx #0:lda option_led_colour:bne not_black
@@ -329,21 +327,32 @@
     sixel_inverse_row = zp_tmp + 2
     x_group_count = zp_tmp + 3
 
-    ; TODO: This vsync consistenty causes "tearing"; probably need to alter how this works
-    jsr wait_for_vsync
-    lda option_panel_template:jsr get_panel_template_a_address
+    mode_7_screen_copy = mode_7_screen - &400
+    offset = panel_template_top_left_y*mode_7_width
+    screen_address_top_left = mode_7_screen_copy + panel_template_top_left_x
 
-\ TODO: Not too happy with some of these names
-sixel_width = 2
-sixel_height = 3
-width_chars = panel_width/sixel_width
-x_group_chars = 4
-x_groups = width_chars / x_group_chars
+    \ TODO: Not too happy with some of these names
+    sixel_width = 2
+    sixel_height = 3
+    width_chars = panel_width/sixel_width
+    x_group_chars = 4
+    x_groups = width_chars / x_group_chars
+
+    ; This is a moderately slow process; in an attempt to avoid tearing when we update
+    ; the screen, we generate the mode 7 graphics on a copy of the mode 7 screen and
+    ; copy that back to the actual screen RAM afterwards.
+    {
+        ldx #0
+    .loop
+        lda mode_7_screen+offset,x:sta mode_7_screen_copy,x
+        lda mode_7_screen+&100+offset,x:sta mode_7_screen_copy+&100,x
+        dex:bne loop
+    }
 
     \ Skip the count of LEDs at the start of the panel template.
+    lda option_panel_template:jsr get_panel_template_a_address
     txa:clc:adc #2:sta src
     tya:adc #0:sta src+1
-    screen_address_top_left = mode_7_screen + panel_template_top_left_y*mode_7_width + panel_template_top_left_x
     lda #lo(screen_address_top_left):sta dest
     lda #hi(screen_address_top_left):sta dest+1
     lda #panel_height:sta template_rows_left
@@ -381,6 +390,16 @@ x_groups = width_chars / x_group_chars
     inc_word_high dest+1
     jmp template_row_loop
 .done
+
+    ; Copy the generated data back to screen RAM.
+    jsr wait_for_vsync
+    {
+        ldx #0
+    .loop
+        lda mode_7_screen_copy,x:sta mode_7_screen+offset,x
+        lda mode_7_screen_copy+&100,x:sta mode_7_screen+&100+offset,x
+        dex:bne loop
+    }
     rts
 
 .pixel_to_sixel_row_table
