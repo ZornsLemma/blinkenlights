@@ -1,9 +1,9 @@
 {
+    ; Debug options
     show_missed_vsync = FALSE
     show_rows = FALSE
     assert not(show_missed_vsync and show_rows)
     slow_palette = TRUE
-    \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
 
     animate_start = *
 
@@ -99,68 +99,67 @@ endmacro
     jsr compile_led_shape
 
     \ Set up the LEDs based on the panel template.
-    lda option_panel_template:jsr get_panel_template_a_address
-    stx src:sty src+1
+    {
+        lda option_panel_template:jsr get_panel_template_a_address
+        stx src:sty src+1
 
-    \ The first two bytes of the template are the number of LEDs; we need to set up
-    \ the per-frame initialisation accordingly, and if we don't have an exact
-    \ multiple of 256 LEDs we need to take that into account by starting with X>0.
-    ldy #1:lda (src),y:sta lda_imm_led_groups+1
-    dey:lda (src),y:beq exact_multiple
-    inc lda_imm_led_groups+1
-    lda #0:sec:sbc (src),y
-.exact_multiple
-    sta lda_imm_initial_x+1:sta working_index
-    clc:lda src:adc #2:sta src
-    inc_word_high src+1
+        \ The first two bytes of the template are the number of LEDs; we need to set up
+        \ the per-frame initialisation accordingly, and if we don't have an exact
+        \ multiple of 256 LEDs we need to take that into account by starting with X>0.
+        ldy #1:lda (src),y:sta lda_imm_led_groups+1
+        dey:lda (src),y:beq exact_multiple
+        inc lda_imm_led_groups+1
+        lda #0:sec:sbc (src),y
+    .exact_multiple
+        sta lda_imm_initial_x+1:sta working_index
+        clc:lda src:adc #2:sta src
+        inc_word_high src+1
 
-    \ TODO PROB WANT TO PUT A INTO X OR SOMETHING FOR FOLLOWING CODE TO WORK WITH
+        lda #hi(inverse_row_table):sta sta_inverse_row_table_x+2
+        lda #hi(address_low_table):sta sta_address_low_table_x+2
+        lda #hi(address_high_table):sta sta_address_high_table_x+2
 
-    lda #hi(inverse_row_table):sta SFTODOPATCHME1+2
-    lda #hi(address_low_table):sta SFTODOPATCHME2+2
-    lda #hi(address_high_table):sta SFTODOPATCHME3+2
-
-    lda #0:sta led_x:sta led_y
-    ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
-    ; cell; for small LEDs, "Y=0" is scanline 2.
-    lda option_led_size:clc:adc #1
-    sta dest
-    lda #&58:sta dest+1
-    \ TODO WE NEED TO SET UP inverse_row_table, address_{low,high}_table - OTHER TABLES CAN SAFELY BE OVER-FILLED
-.SFTODOLOOP
-    ldy #0:lda (src),y
-    ldx #8
-.SFTODOLOOP2
-    asl a
-    pha \ TODO PROB EASIER JUST TO USE A ZP LOC INSTEAD OF A FOR THE SHIFTING
-    bcc empty
-    ldy working_index
-    lda #32:sec:sbc led_y
-.SFTODOPATCHME1
-    sta &ff00,y \ patched
-    lda dest
-.SFTODOPATCHME2
-    sta &ff00,y \ patched
-    lda dest+1
-.SFTODOPATCHME3
-    sta &ff00,y \ patched
-    inc working_index
-    bne not_next_led_group
-    inc SFTODOPATCHME1+2
-    inc SFTODOPATCHME2+2
-    inc SFTODOPATCHME3+2
-.not_next_led_group
-.empty
-    lda dest:clc:adc #8:sta dest
-    inc_word_high dest+1
-    inc led_x
-    pla
-    dex:bne SFTODOLOOP2
-    inc_word src
-    lda led_x:cmp #40:bne SFTODOLOOP
-    lda #0:sta led_x
-    inc led_y
-    lda led_y:cmp #32:bne SFTODOLOOP
+        lda #0:sta led_x:sta led_y
+        ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
+        ; cell; for small LEDs, "Y=0" is scanline 2.
+        lda option_led_size:clc:adc #1
+        sta dest
+        lda #&58:sta dest+1
+    .outer_loop
+        ldy #0:lda (src),y
+        ldx #8
+    .group_of_8_loop
+        asl a
+        pha
+        bcc empty
+        ldy working_index
+        lda #32:sec:sbc led_y
+    .sta_inverse_row_table_x
+        sta &ff00,y \ patched
+        lda dest
+    .sta_address_low_table_x
+        sta &ff00,y \ patched
+        lda dest+1
+    .sta_address_high_table_x
+        sta &ff00,y \ patched
+        inc working_index
+        bne not_next_led_group
+        inc sta_inverse_row_table_x+2
+        inc sta_address_low_table_x+2
+        inc sta_address_high_table_x+2
+    .not_next_led_group
+    .empty
+        lda dest:clc:adc #8:sta dest
+        inc_word_high dest+1
+        inc led_x
+        pla
+        dex:bne group_of_8_loop
+        inc_word src
+        lda led_x:cmp #40:bne outer_loop
+        lda #0:sta led_x
+        inc led_y
+        lda led_y:cmp #32:bne outer_loop
+    }
 
     ; Initialise the LED periods using randomly generated values based on the
     ; chosen parameters.
@@ -511,3 +510,5 @@ endif
 \ TODO: END EXPERIMENTAL
 
 }
+
+\ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
