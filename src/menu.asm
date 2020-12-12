@@ -40,7 +40,7 @@
     jsr show_led_spread_no_vsync
     jsr show_led_distribution_no_vsync
     jsr show_panel_colour_no_vsync
-    jsr show_panel_template_SFTODO2_no_vsync
+    jsr show_panel_template
 
     jsr update_random_seed
 
@@ -116,7 +116,7 @@
 
 .adjust_panel_template
     ldy #option_panel_template-option_base:jsr adjust_option
-    jmp show_panel_template_SFTODO2 ; TODO RENAME THIS LABEL, TODO: JUST FALL THRU?
+    jmp show_panel_template ; TODO: JUST FALL THRU?
 
 ; Increment or decrement option Y (depending whether SHIFT is pressed or not),
 ; wrapping around at the ends of the range.
@@ -180,13 +180,6 @@
     lda #165:iny:sta (dest),y
     rts
 }
-
-.show_panel_template_SFTODO2
-    ; TODO: This vsync consistenty causes "tearing"; probably need to alter how this works
-    jsr wait_for_vsync
-.show_panel_template_SFTODO2_no_vsync
-    lda option_panel_template:jsr get_panel_template_a_address
-    jmp show_panel_template ; SFTODO JUST FALL THRU? THIS NEEDS MOVING INTO THIS FILE ANYWAY
 
 ; Set YX to point to panel template A.
 .*get_panel_template_a_address ; TODO: MOVE INTO ANOTHER FILE?
@@ -328,13 +321,17 @@
     incbin "../res/menu-template.bin"
 
 \ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
-\ Display the panel template at YX using mode 7 graphics at panel_template_top_left_[xy].
+\ Display panel template A using mode 7 graphics at panel_template_top_left_[xy].
 .show_panel_template
 {
     pixel_bitmap = zp_tmp
     template_rows_left = zp_tmp + 1
     sixel_inverse_row = zp_tmp + 2
     x_group_count = zp_tmp + 3
+
+    ; TODO: This vsync consistenty causes "tearing"; probably need to alter how this works
+    jsr wait_for_vsync
+    lda option_panel_template:jsr get_panel_template_a_address
 
 \ TODO: Not too happy with some of these names
 sixel_width = 2
