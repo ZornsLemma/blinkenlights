@@ -108,7 +108,7 @@ endmacro
 
     \ Set up the LEDs based on the panel template.
     {
-        lda option_panel_template:jsr get_panel_template_a_address
+        jsr get_panel_template_address
         stx src:sty src+1
 
         \ The first two bytes of the template are the number of LEDs; we need to set up

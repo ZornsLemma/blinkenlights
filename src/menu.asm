@@ -180,13 +180,6 @@
     rts
 }
 
-; Set YX to point to panel template A.
-.*get_panel_template_a_address ; TODO: MOVE INTO ANOTHER FILE?
-    asl a:tay
-    ldx panel_template_list,y
-    lda panel_template_list+1,y:tay
-    rts
-
 ; Update the LED image in the menu to reflect the colour, shape and size
 ; options.
 .show_led_visual_options
@@ -287,39 +280,7 @@
     equs "binomially"
 }
 
-.option_base
-.*option_led_colour
-    equb colour_red
-.*option_led_shape
-    equb 0
-.*option_led_size
-    equb 0
-.*option_led_frequency
-    equb 1
-.*option_led_spread
-    equb 2
-.*option_led_distribution
-    equb 0
-.*option_panel_colour
-    equb 0
-.*option_panel_template
-    equb 0
-
-.option_max
-    equb 7 ; LED colour
-    equb 4 ; LED shape
-    equb 1 ; LED size
-    equb num_frequencies-1 ; LED frequency
-    equb num_spreads-1 ; LED spread
-    equb 1 ; LED distribution
-    equb 7 ; panel colour
-    equb num_panel_templates-1 ; panel template
-
-.menu_template
-    incbin "../res/menu-template.bin"
-
 \ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
-\ Display panel template A using mode 7 graphics at panel_template_top_left_[xy].
 .show_panel_template
 {
     pixel_bitmap = zp_tmp
@@ -350,7 +311,7 @@
     }
 
     \ Skip the count of LEDs at the start of the panel template.
-    lda option_panel_template:jsr get_panel_template_a_address
+    jsr get_panel_template_address
     txa:clc:adc #2:sta src
     tya:adc #0:sta src+1
     lda #lo(screen_address_top_left):sta dest
@@ -402,6 +363,13 @@
     }
     rts
 
+; Set YX to point to current panel template.
+.*get_panel_template_address
+    lda option_panel_template:asl a:tay
+    ldx panel_template_list,y
+    lda panel_template_list+1,y:tay
+    rts
+
 .pixel_to_sixel_row_table
     \ Bottom row of sixel
     \ Sixel value    pixels
@@ -425,6 +393,37 @@
 
 .wait_for_vsync
     lda #osbyte_wait_for_vsync:jmp osbyte
+
+.option_base
+.*option_led_colour
+    equb colour_red
+.*option_led_shape
+    equb 0
+.*option_led_size
+    equb 0
+.*option_led_frequency
+    equb 1
+.*option_led_spread
+    equb 2
+.*option_led_distribution
+    equb 0
+.*option_panel_colour
+    equb 0
+.*option_panel_template
+    equb 0
+
+.option_max
+    equb 7 ; LED colour
+    equb 4 ; LED shape
+    equb 1 ; LED size
+    equb num_frequencies-1 ; LED frequency
+    equb num_spreads-1 ; LED spread
+    equb 1 ; LED distribution
+    equb 7 ; panel colour
+    equb num_panel_templates-1 ; panel template
+
+.menu_template
+    incbin "../res/menu-template.bin"
 }
 
 .mode_7_led_bitmap_base
