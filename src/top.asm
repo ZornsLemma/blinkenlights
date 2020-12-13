@@ -92,6 +92,7 @@ shared_zp_end = &90
     equb 0 ; set at runtime to 0 for NMOS, 1 for CMOS
 
     ; TODO: Might want to tweak how the auto-generation works, have some Python code generate panel_template_list and a count of number of entries and we just do a single "include" which does everything
+    ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
 .panel_template_circle_32
     incbin "../res/circle-32.bin"
 .panel_template_rectangle_32
