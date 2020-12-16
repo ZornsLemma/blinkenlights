@@ -61,20 +61,38 @@ macro set_background_a
     endif
 endmacro
 
-macro advance_to_next_led_fall_through
-    inx
-    bne led_loop
+macro check_no_page_crossing target
+    assert hi(*) == hi(target)
 endmacro
 
-; Note that this macro's body is also generated at runtime by compile_led_shape,
-; so the two must be kept in sync.
+macro bmi_npc target
+    bmi target
+    check_no_page_crossing target
+endmacro
+
+macro beq_npc target
+    beq target
+    check_no_page_crossing target
+endmacro
+
+macro bne_npc target
+    bne target
+    check_no_page_crossing target
+endmacro
+
+; Note that the following two macros are also expanded at runtime by
+; compile_led_shape, so they must be kept in sync.
+
+macro advance_to_next_led_fall_through
+    inx
+    bne_npc led_loop
+endmacro
+
 macro advance_to_next_led
     advance_to_next_led_fall_through
     beq advance_to_next_led_group \ always branch
 endmacro
 
-
-\ TODO NEED TO MOVE ALL THIS CODE OUT OF TOP.ASM INTO ANIMATION.ASM OR SIMILAR
 .*start_animation
 {
     \ Select mode 4 and set the foreground and background colours.
@@ -289,10 +307,10 @@ endif
     sec
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
-    bmi not_going_to_toggle
+    bmi_npc not_going_to_toggle
 .sbc_imm_ticks_per_frame_1
     sbc #&ff \ patched
-    bmi toggle_led
+    bmi_npc toggle_led
 .sta_count_x_1
     sta &ff00,x \ patched
     advance_to_next_led
@@ -337,34 +355,15 @@ endif
 .sta_state_x
     sta &ff00,x \ patched
 .^beq_turn_led_off
-    beq beq_turn_led_off \ patched
+    beq_npc advance_to_next_led_group \ patched
 
     ; compile_led_shape generates code at runtime here
 .^turn_led_on_start
     brk
     equs 0, "No LED!", 0
-    skip 32 ; TODO: MAGIC CONSTANT
+    skip 32
 .^turn_led_on_end
     skip 24
-
-    if FALSE ; TODO DELETE
-led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I CAN REWRITE THE FOLLOWING CODE - I SHOULD DYNAMICALLY GENERATE THIS AT START OF ANIMATION, THAY WAY I CAN USE THE RIGHT IMPLICIT LED_MAX_LINE AND I CAN ALSO USE CMOS INSTR IF AVAIL
-; TODO: WHEN I AUTOGENERATE THIS CODE, I SHOULD PROBABLY START FROM THE *END* SO WE CAN FALL THRU TO ADVANCE_TO_NEXT_LED_GROUP, AND PATCH THE SINGLE BRANCH TO THIS LABEL TO MATCH THE ACTUAL START
-.turn_led_off
-    \ Turn this LED off.
-    \ TIME: This takes 2+6*(2+6)=50 cycles (for big LEDs)
-    lda #0
-    for y, 0, led_max_line
-        \ TODO: Scope for using CMOS
-        if y == 0
-            ldy #0 \ TODO: tay would save one byte, but no faster and more obscure
-        else
-            iny
-        endif
-        sta (dest),y
-    next
-    advance_to_next_led_fall_through
-    endif
 
 .^advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
@@ -433,9 +432,7 @@ endif
     pla:sta &fc:rti
 }
 
-\ TODO: START EXPERIMENTAL
 ; TODO: GIVE THIS ITS OWN FILE??
-; TODO: THIS SHOULD TAKE ADVANTAGE OF CMOS INSTRUCTIONS IF AVAILABLE
 .compile_led_shape
 {
     runtime_y = zp_tmp
@@ -449,7 +446,6 @@ endif
     .bitmap_loop
         ; Emit an "lda #bitmap" instruction.
         ldy #0:lda (src),y:beq done
-        ; TODO: NEXT THREE LINES MIGHT BE WORTH FACTORING OUT INTO SUBROUTINE
         pha
         lda #opcode_lda_imm:jsr emit
         pla:jsr emit
@@ -524,7 +520,7 @@ endif
         lda option_led_size:beq large_led
         ldx #led_height_small-1
     .large_led
-    .SFTODOLOOP
+    .line_loop
         lda #dest:jsr emit_dec
         lda cpu_type:beq not_65c02_line_0
         txa:bne not_65c02_line_0
@@ -545,7 +541,7 @@ endif
         lda #opcode_tay:jsr emit_dec ; set Y=0
     .not_line_0
     .y_set
-        dex:bpl SFTODOLOOP
+        dex:bpl line_loop
         lda #0:jsr emit_dec
         lda #opcode_lda_imm:jsr emit_dec
         ; Check we haven't overflow the available space; we have iff dest < turn_led_on_end-1.
@@ -575,8 +571,6 @@ endif
     dec dest
     rts
 }
-
-\ TODO: END EXPERIMENTAL
 
 }
 
