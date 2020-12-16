@@ -520,9 +520,9 @@ endif
         sec:lda #lo(led_loop-1):sbc dest:jsr emit_dec
         lda #opcode_bne:jsr emit_dec
         lda #opcode_inx:jsr emit_dec
-        ldx #5
+        ldx #led_height_large-1
         lda option_led_size:beq large_led
-        ldx #3
+        ldx #led_height_small-1
     .large_led
     .SFTODOLOOP
         lda #dest:jsr emit_dec

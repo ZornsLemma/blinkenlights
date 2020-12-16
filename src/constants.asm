@@ -16,6 +16,8 @@ mode_7_graphics_colour_base = 144
 panel_width = 40
 panel_height = 32
 led_count = panel_width*panel_height
+led_height_large = 6
+led_height_small = 4
 
 osbyte_wait_for_vsync = &13
 osbyte_flush_buffer = &15
