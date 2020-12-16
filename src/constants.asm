@@ -49,6 +49,7 @@ opcode_rts = &60
 opcode_jmp_indirect = &6c
 opcode_dey = &88
 opcode_ldy_imm = &a0
+opcode_tay = &a8
 opcode_lda_imm = &a9
 opcode_sta_zp_ind_y = &91
 opcode_sta_zp_ind = &92

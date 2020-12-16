@@ -336,7 +336,8 @@ endif
     eor #255
 .sta_state_x
     sta &ff00,x \ patched
-    beq turn_led_off
+.^beq_turn_led_off
+    beq beq_turn_led_off \ patched
 
     ; compile_led_shape generates code at runtime here
 .^turn_led_on_start
@@ -344,7 +345,9 @@ endif
     equs 0, "No LED!", 0
     skip 32 ; TODO: MAGIC CONSTANT
 .^turn_led_on_end
+    skip 24
 
+    if FALSE ; TODO DELETE
 led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I CAN REWRITE THE FOLLOWING CODE - I SHOULD DYNAMICALLY GENERATE THIS AT START OF ANIMATION, THAY WAY I CAN USE THE RIGHT IMPLICIT LED_MAX_LINE AND I CAN ALSO USE CMOS INSTR IF AVAIL
 ; TODO: WHEN I AUTOGENERATE THIS CODE, I SHOULD PROBABLY START FROM THE *END* SO WE CAN FALL THRU TO ADVANCE_TO_NEXT_LED_GROUP, AND PATCH THE SINGLE BRANCH TO THIS LABEL TO MATCH THE ACTUAL START
 .turn_led_off
@@ -361,6 +364,7 @@ led_max_line = 5 ; TODO: THIS IS ONLY FOR BIG LEDS, THIS IS A TEMP HACK UNTIL I 
         sta (dest),y
     next
     advance_to_next_led_fall_through
+    endif
 
 .^advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
@@ -436,78 +440,126 @@ endif
 {
     runtime_y = zp_tmp
 
-    stx src:sty src+1
-    lda #lo(turn_led_on_start):sta dest
-    lda #hi(turn_led_on_start):sta dest+1
-
     ; Emit code to store the LED bitmap on the screen.
-    lda #128:sta runtime_y
-.bitmap_loop
-    ; Emit an "lda #bitmap" instruction.
-    ldy #0:lda (src),y:beq done
-    ; TODO: NEXT THREE LINES MIGHT BE WORTH FACTORING OUT INTO SUBROUTINE
-    pha
-    lda #opcode_lda_imm:jsr emit
-    pla:jsr emit
-    ; Loop over the scanlines this bitmap needs to be written to and emit code.
-.line_loop
-    inc_word src
-    ldy #0:lda (src),y:bmi line_loop_done
-    ; A now contains the scanline index, held in Y at runtime.
-    ldx cpu_type:beq not_65c02_line_0
-    tax:bne not_65c02_line_0
-    ; We're on a 65C02 and we're modifying scanline 0, so we can use the
-    ; zp indirect addressing mode.
-    lda #opcode_sta_zp_ind:jsr emit
-    lda #dest:jsr emit
-    jmp line_loop
-.not_65c02_line_0
-    ; Can we set Y appropriately using iny or dey? (This is no faster than "ldy
-    ; #n", but it's shorter.)
-    inc runtime_y:cmp runtime_y:beq emit_iny
-    dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
-    ; No, we can't, so emit "ldy #n".
-    sta runtime_y
-    lda #opcode_ldy_imm:jsr emit
-    lda runtime_y:jsr emit
-    jmp y_set
-.emit_iny
-    lda #opcode_iny:bne emit_iny_dey
-.emit_dey
-    lda #opcode_dey
-.emit_iny_dey
-    jsr emit
-.y_set
-    ; Y is now set, so emit "sta (dest),y".
-    lda #opcode_sta_zp_ind_y:jsr emit
-    lda #dest:jsr emit
-    jmp line_loop
-.line_loop_done
-    inc_word src
-    jmp bitmap_loop
-.done
+    {
+        stx src:sty src+1
+        lda #lo(turn_led_on_start):sta dest
+        lda #hi(turn_led_on_start):sta dest+1
+        lda #128:sta runtime_y
+    .bitmap_loop
+        ; Emit an "lda #bitmap" instruction.
+        ldy #0:lda (src),y:beq done
+        ; TODO: NEXT THREE LINES MIGHT BE WORTH FACTORING OUT INTO SUBROUTINE
+        pha
+        lda #opcode_lda_imm:jsr emit
+        pla:jsr emit
+        ; Loop over the scanlines this bitmap needs to be written to and emit code.
+    .line_loop
+        inc_word src
+        ldy #0:lda (src),y:bmi line_loop_done
+        ; A now contains the scanline index, held in Y at runtime.
+        ldx cpu_type:beq not_65c02_line_0
+        tax:bne not_65c02_line_0
+        ; We're on a 65C02 and we're modifying scanline 0, so we can use the
+        ; zp indirect addressing mode.
+        lda #opcode_sta_zp_ind:jsr emit
+        lda #dest:jsr emit
+        jmp line_loop
+    .not_65c02_line_0
+        ; Can we set Y appropriately using iny or dey? (This is no faster than "ldy
+        ; #n", but it's shorter.)
+        inc runtime_y:cmp runtime_y:beq emit_iny
+        dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
+        ; No, we can't, so emit "ldy #n".
+        sta runtime_y
+        lda #opcode_ldy_imm:jsr emit
+        lda runtime_y:jsr emit
+        jmp y_set
+    .emit_iny
+        lda #opcode_iny:bne emit_iny_dey
+    .emit_dey
+        lda #opcode_dey
+    .emit_iny_dey
+        jsr emit
+    .y_set
+        ; Y is now set, so emit "sta (dest),y".
+        lda #opcode_sta_zp_ind_y:jsr emit
+        lda #dest:jsr emit
+        jmp line_loop
+    .line_loop_done
+        inc_word src
+        jmp bitmap_loop
+    .done
 
-    ; Emit code equivalent to our "advance_to_next_led" macro.
-    lda #opcode_inx:jsr emit
-    lda #opcode_bne:jsr emit
-    sec:lda #lo(led_loop-1):sbc dest:jsr emit
-    lda #opcode_beq:jsr emit
-    sec:lda #lo(advance_to_next_led_group-1):sbc dest:jsr emit
+        ; Emit code equivalent to our "advance_to_next_led" macro.
+        lda #opcode_inx:jsr emit
+        lda #opcode_bne:jsr emit
+        sec:lda #lo(led_loop-1):sbc dest:jsr emit
+        lda #opcode_beq:jsr emit
+        sec:lda #lo(advance_to_next_led_group-1):sbc dest:jsr emit
 
-    ; Check we haven't overflowed the available space; we have iff
-    ; turn_led_on_end < dest.
-    lda #hi(turn_led_on_end):cmp dest+1:bne use_high_byte_result
-    lda #lo(turn_led_on_end):cmp dest
-.use_high_byte_result
-    bcs not_overflowed
-    brk
-    equs 0, "Code overflowed!", 0
-.not_overflowed
+        ; Check we haven't overflowed the available space; we have iff
+        ; turn_led_on_end < dest.
+        lda #hi(turn_led_on_end):cmp dest+1:bne use_high_byte_result
+        lda #lo(turn_led_on_end):cmp dest
+    .use_high_byte_result
+        bcs not_overflowed
+    .^overflowed
+        brk
+        equs 0, "Code overflowed!", 0
+    .not_overflowed
+    }
+
+    ; Emit code to clear the LED bitmap from the screen. We emit this backwards,
+    ; so we can fall through into advance_to_next_led_group. The entry to the
+    ; code is via beq_turn_led_off, which we patch to refer to the correct start
+    ; address.
+    {
+        lda #lo(advance_to_next_led_group-1):sta dest
+        lda #hi(advance_to_next_led_group-1):sta dest+1
+        ; Emit advance_to_next_led_fall_through.
+        sec:lda #lo(led_loop-1):sbc dest:jsr emit_dec
+        lda #opcode_bne:jsr emit_dec
+        lda #opcode_inx:jsr emit_dec
+        ldx #5
+        lda option_led_size:beq large_led
+        ldx #3
+    .large_led
+    .SFTODOLOOP
+        ; SFTODO: CMOS SUPPORT!
+        lda #dest:jsr emit_dec
+        lda #opcode_sta_zp_ind_y:jsr emit_dec
+        txa:beq line_0
+        lda #opcode_iny:jsr emit_dec
+        jmp not_line_0
+    .line_0
+        lda #opcode_tay:jsr emit_dec ; set Y=0
+    .not_line_0
+        dex:bpl SFTODOLOOP
+        lda #0:jsr emit_dec
+        lda #opcode_lda_imm:jsr emit_dec
+        ; Check we haven't overflow the available space; we have iff dest < turn_led_on_end-1.
+        lda dest+1:cmp #hi(turn_led_on_end-1):bne use_high_byte_result
+        lda dest:cmp #lo(turn_led_on_end-1)
+    .use_high_byte_result
+        bcc overflowed
+        ; Patch up beq_turn_led_off to transfer control to dest+1.
+        sec:lda dest:sbc #lo(beq_turn_led_off+1):sta beq_turn_led_off+1
+    }
+
     rts
 
 .emit
     ldy #0:sta (dest),y
     inc_word dest
+    rts
+
+.emit_dec
+    ldy #0:sta (dest),y
+    lda dest:bne no_borrow
+    dec dest+1
+.no_borrow
+    dec dest
     rts
 }
 
