@@ -16,23 +16,24 @@
 
     org shared_zp_start
     guard shared_zp_end
+    clear shared_zp_start, shared_zp_end
 .working_index
     skip 1
 
     org menu_start
     guard mode_4_screen
- 
+
+.*show_menu
+{
     jsr wait_for_vsync
-    {
-        ldx #0
-    .loop
-        lda menu_template     ,x:sta mode_7_screen     ,x
-        lda menu_template+&100,x:sta mode_7_screen+&100,x
-        lda menu_template+&200,x:sta mode_7_screen+&200,x
-        lda menu_template+&300,x:sta mode_7_screen+&300,x
-        inx
-        bne loop
-    }
+    ldx #0
+.loop
+    lda menu_template     ,x:sta mode_7_screen     ,x
+    lda menu_template+&100,x:sta mode_7_screen+&100,x
+    lda menu_template+&200,x:sta mode_7_screen+&200,x
+    lda menu_template+&300,x:sta mode_7_screen+&300,x
+    inx
+    bne loop
     jsr show_led_visual_options_no_vsync
     jsr show_led_frequency_no_vsync
     jsr show_led_spread_no_vsync
@@ -44,7 +45,6 @@
 
     ; Repeatedly check for keys pressed and process them.
 .input_loop
-{
     lda #-3 and &ff:sta working_index
 .key_loop
     clc:lda working_index:adc #3:sta working_index
@@ -80,9 +80,34 @@
     equb keyboard_6:equw adjust_led_distribution
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
-    ; TODO: Don't forget to do the randomise option!
+    equb keyboard_0:equw randomise_options
     equb keyboard_space:equw start_animation
     equb 0
+
+.randomise_options
+{
+    ; We don't randomise the colours because that's likely to be ugly, and the
+    ; user probably has a stronger preference about colours than about the other
+    ; options.
+    ldy #option_led_shape-option_base:jsr randomise_option
+    ldy #option_led_size-option_base:jsr randomise_option
+    ldy #option_led_frequency-option_base:jsr randomise_option
+    ldy #option_led_spread-option_base:jsr randomise_option
+    ldy #option_led_distribution-option_base:jsr randomise_option
+    ldy #option_panel_template-option_base:jsr randomise_option
+    jsr wait_for_vsync
+    jsr show_led_visual_options_no_vsync
+    jsr show_led_frequency_no_vsync
+    jsr show_led_spread_no_vsync
+    jsr show_led_distribution_no_vsync
+    jmp show_panel_template
+
+.randomise_option
+    sty working_index
+    lda option_max,y:clc:adc #1:jsr urandom8
+    ldy working_index:sta option_base,y
+    rts
+}
 
 .adjust_led_colour
     ldy #option_led_colour-option_base:jsr adjust_option
@@ -136,15 +161,9 @@
 .show_panel_colour
     jsr wait_for_vsync
 .show_panel_colour_no_vsync
+{
     lda option_panel_colour
     ldyx_mode_7 panel_colour_top_left_x, panel_colour_top_left_y
-    fall_through_to show_colour
-
-; Display a colour swatch for colour A at screen memory address YX.
-; TODO: De-subroutine this if it's only used in one place?
-; TODO: Use oswrch here instead of direct screen access?
-.show_colour
-{
     stx dest:sty dest+1
     tax:beq black
     clc:adc #mode_7_graphics_colour_base:pha

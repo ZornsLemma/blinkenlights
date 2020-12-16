@@ -77,9 +77,12 @@ shared_zp_end = &90
         sta cpu_type
     }
 
-    ; Execution falls through into the code in menu.asm.
-    include "menu.asm"
+    jmp show_menu
+
+    ; We include animate.asm first so as to minimise the nuisance of code
+    ; changes causing branches to cross page boundaries.
     include "animate.asm"
+    include "menu.asm"
     include "utilities.asm"
 
 .jmp_indirect_for_cmos_test
