@@ -433,7 +433,6 @@ endif
     pla:sta &fc:rti
 }
 
-; TODO: GIVE THIS ITS OWN FILE??
 .compile_led_shape
 {
     runtime_y = zp_tmp
