@@ -108,14 +108,6 @@
     ldy #option_led_distribution-option_base:jsr adjust_option
     jmp show_led_distribution
 
-.adjust_panel_colour
-    ldy #option_panel_colour-option_base:jsr adjust_option
-    jmp show_panel_colour ; TODO: fall through
-
-.adjust_panel_template
-    ldy #option_panel_template-option_base:jsr adjust_option
-    jmp show_panel_template ; TODO: JUST FALL THRU?
-
 ; Increment or decrement option Y (depending whether SHIFT is pressed or not),
 ; wrapping around at the ends of the range.
 .adjust_option
@@ -136,6 +128,10 @@
     sta option_base,y
     rts
 }
+
+.adjust_panel_colour
+    ldy #option_panel_colour-option_base:jsr adjust_option
+    fall_through_to show_panel_colour
 
 .show_panel_colour
     jsr wait_for_vsync
@@ -277,6 +273,10 @@
 .text_binomially
     equs "binomially"
 }
+
+.adjust_panel_template
+    ldy #option_panel_template-option_base:jsr adjust_option
+    fall_through_to show_panel_template
 
 \ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
 .show_panel_template
@@ -428,3 +428,5 @@
 include "../res/menu-led-template.asm"
 
 include "../res/led-freq-spread.asm"
+
+; TODO: DON'T ALLOW ANIM TO START WITH FG AND BG THE SAME!
