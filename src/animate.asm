@@ -504,7 +504,6 @@ endif
         lda #lo(turn_led_on_end):cmp dest
     .use_high_byte_result
         bcs not_overflowed
-    .^overflowed
         brk
         equs 0, "Code overflowed!", 0
     .not_overflowed
@@ -526,15 +525,26 @@ endif
         ldx #3
     .large_led
     .SFTODOLOOP
-        ; SFTODO: CMOS SUPPORT!
         lda #dest:jsr emit_dec
+        lda cpu_type:beq not_65c02_line_0
+        txa:bne not_65c02_line_0
+        lda #opcode_sta_zp_ind:jsr emit_dec
+        jmp y_set
+    .not_65c02_line_0
         lda #opcode_sta_zp_ind_y:jsr emit_dec
         txa:beq line_0
+        lda cpu_type:beq not_65c02_line_1
+        cpx #1:bne not_65c02_line_1
+        txa:jsr emit_dec
+        lda #opcode_ldy_imm:jsr emit_dec
+        jmp y_set
+    .not_65c02_line_1
         lda #opcode_iny:jsr emit_dec
-        jmp not_line_0
+        jmp y_set
     .line_0
         lda #opcode_tay:jsr emit_dec ; set Y=0
     .not_line_0
+    .y_set
         dex:bpl SFTODOLOOP
         lda #0:jsr emit_dec
         lda #opcode_lda_imm:jsr emit_dec
@@ -542,7 +552,10 @@ endif
         lda dest+1:cmp #hi(turn_led_on_end-1):bne use_high_byte_result
         lda dest:cmp #lo(turn_led_on_end-1)
     .use_high_byte_result
-        bcc overflowed
+        bcs not_overflowed
+        brk
+        equs 0, "Code overflowed!", 0
+    .not_overflowed
         ; Patch up beq_turn_led_off to transfer control to dest+1.
         sec:lda dest:sbc #lo(beq_turn_led_off+1):sta beq_turn_led_off+1
     }
