@@ -1,8 +1,9 @@
 {
     ; Debug options
-    show_missed_vsync = FALSE
+    show_missed_vsync_1 = FALSE
+    show_missed_vsync_2 = FALSE
     show_rows = FALSE
-    assert not(show_missed_vsync and show_rows)
+    assert not(show_missed_vsync_1 and show_rows)
     slow_palette = TRUE
 
     scanline_to_interrupt_at = -2
@@ -260,10 +261,7 @@ endmacro
     lda #hi(irq_handler):sta irq1v+1
     lda #0:sta frame_count
     cli
-    jmp forever_loop
 
-    \ TODO: Pay proper attention to alignment so the branches in the important code never take longer than necessary - this is a crude hack which will probably do the job but I haven't checked.
-    align &100
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
@@ -289,13 +287,16 @@ endmacro
 .vsync_wait_loop
     lda frame_count
     bmi vsync_wait_loop
-if show_missed_vsync
-    jmp SFTODOHACK
+if show_missed_vsync_1
+    jmp no_missed_vsync
 endif
 .missed_vsync
-if show_missed_vsync
+if show_missed_vsync_2
+    lda frame_count:sta &5800
+endif
+if show_missed_vsync_1
     lda #1 eor 7:set_background_a
-.SFTODOHACK
+.no_missed_vsync
 endif
 
 .^led_loop
@@ -424,7 +425,7 @@ endif
 if show_rows
     lda #5 eor 7:set_background_a
 endif
-if show_missed_vsync
+if show_missed_vsync_1
     lda #0 eor 7:set_background_a
 endif
     pla:sta &fc:rti \ jmp return_to_os
