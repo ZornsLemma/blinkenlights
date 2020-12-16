@@ -22,7 +22,6 @@
     org menu_start
     guard mode_4_screen
  
-    ; them briefly flickering into view before we update them after copying the template. Unless vsyncing means the user never gets a chance to see them.
     jsr wait_for_vsync
     {
         ldx #0
