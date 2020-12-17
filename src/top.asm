@@ -91,8 +91,7 @@ shared_zp_end = &90
 .jmp_indirect_for_cmos_test
     ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
     ; generating an error.
-    equb opcode_jmp_indirect
-    equw mode_4_screen+&ff
+    equb opcode_jmp_indirect:equw mode_4_screen+&ff
 
 .cpu_type
     equb 0 ; set at runtime to 0 for NMOS, 1 for CMOS
@@ -136,8 +135,6 @@ shared_zp_end = &90
 
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
-
-; TODO: I am currently *maybe* seeing a slight weirdness with some of the LEDs when they first start animating - it's probably fine, but have a look and see if not all are initialised or the fact that some panels don't use *all* the LED slots has some kind of impact - I *think* this was caused by not initialising state_table and count_table every time, so after the first animation the LEDs didn't all start in sync - if so I have now fixed this, will leave this TODO in place for a bit in case there was another cause
 
 \ TODO: Standardise on & vs $ for hex - probably & - done, but keep this TODO around as I'll probably slip up
 
