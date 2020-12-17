@@ -84,6 +84,9 @@ shared_zp_end = &90
     include "animate.asm"
     include "menu.asm"
     include "utilities.asm"
+    ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
+    include "../res/panel-templates.asm"
+    include "../res/led-shapes.asm"
 
 .jmp_indirect_for_cmos_test
     ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
@@ -93,18 +96,6 @@ shared_zp_end = &90
 
 .cpu_type
     equb 0 ; set at runtime to 0 for NMOS, 1 for CMOS
-
-    ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
-    ; TODO: Should probably default to full-screen rectangle panel on startup
-    include "../res/panel-templates.asm"
-
-    include "../res/led-shapes.asm"
-.led_shape_list ; TODO: Generate this list in led-shapes.asm?
-    equw led_shape_0_large, led_shape_0_small
-    equw led_shape_1_large, led_shape_1_small
-    equw led_shape_2_large, led_shape_2_small
-    equw led_shape_3_large, led_shape_3_small
-    equw led_shape_4_large, led_shape_4_small
 
 .key10_command
     equs "KEY10 CALL &"
