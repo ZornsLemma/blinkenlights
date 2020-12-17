@@ -24,13 +24,13 @@ seed3 = SEED3 ; SFTODO: DO PROPERLY
     ldy seed1
     lda table0,x:adc #c:sta seed0
     lda table1,x:adc table0,y:sta seed1
-    lda table2,x:adc table1,y:sta tmp+2 ; SFTODO WE AREN'T USING TMP+[01] SO SHUFFLE DOWN
-    lda table3,x:adc table2,y:sta tmp+3 ; SFTODO: CAN STASH IN Y INSTEAD OF TMP+3
+    lda table2,x:adc table1,y:sta tmp
+    lda table3,x:adc table2,y:tay
 
     clc
     ldx seed2
-    lda table0,x:adc tmp+2:sta seed2
-    lda table1,x:adc tmp+3
+    lda table0,x:adc tmp:sta seed2
+    tya:adc table1,x
 
     clc
     ldx seed3
