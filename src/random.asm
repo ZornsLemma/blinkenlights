@@ -36,11 +36,53 @@ seed3 = SEED3 ; SFTODO: DO PROPERLY
     ldx seed3
     adc table0,x:sta seed3
 
-    ; TODO: UPDATE *SEED*
+    rts
+}
 
-.SFTODOHANG jmp SFTODOHANG
+; Return a uniformly distributed random number between 0 and A-1 inclusive in A.
+.*urandom8
+{
+; TODO PROPER ZP ALLOC
+SFTODOUPTHRESH=TMP
+result=TMP+1
+SFTODO2=TMP+2
+SFTODOINPUTA=TMP+3
+SFTODO1=MOD
+    sta SFTODOINPUTA
 
-.*urandom8 jmp advance_seed ; SFTODO TEMP HACK
+    ; We use the MSB of the seed as the basis for the random number. In order to
+    ; avoid bias if the range of a full byte isn't an exact multiple of the
+    ; range of our output, we discard values which form part of any final
+    ; "partial range". This is a bit wasteful. TODO?
+if FALSE ; TODO
+    tax:lda upper_threshold,x:sta SFTODOUPTHRESH
+.discard_loop
+    jsr advance_seed
+    lda seed3:cmp SFTODOUPTHRESH:bcs discard_loop ; SFTODO NOT THINKING OFF BY ONE YET AS MAY CHANGE HOW INPUT A IS TREATED WRT UPPER BOUND
+endif
+    lda #%11:sta SFTODOINPUTA ; SFTODOTEMP
+    lda #%10110 ; SFTODO TEMP
+    lda #67:sta SFTODOINPUTA
+    lda #250
+
+    ; Now divide A=seed3 by SFTODOINPUTA and take the remainer.
+    ldx #0:stx result:stx SFTODO2
+    sta SFTODO1
+    ldx #8
+.divide_loop
+    asl SFTODO1:rol SFTODO2
+    lda SFTODO2:cmp SFTODOINPUTA:bcc too_small
+    sec ; SFTODO REDUNDANT BUT CLARITY FOR NOW
+    sbc SFTODOINPUTA:sta SFTODO2
+    sec ; SFTODO: REDUNDANT?
+.too_small
+    rol result
+    dex:bne divide_loop
+    lda SFTODO2
+    rts
+}
+
+
 
 macro make_table_SFTODO n
     for i, 0, 255
@@ -58,9 +100,6 @@ endmacro
     make_table_SFTODO 16
 .table3
     make_table_SFTODO 24
-
-}
-
 
 
 ; TODO: OLD BELOW HERE
