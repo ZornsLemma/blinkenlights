@@ -1,8 +1,9 @@
 {
-; Multiplier taken from "Computationally easy, spectrally good multiplier for
+; Multiplier taken from "Computationally easy, spectrally good multipliers for
 ; congruential pseudorandom number generators" by Guy Steele and Sebastiano
 ; Vigna (https://arxiv.org/abs/2001.05304).
 a = &fb85 ; TODO: SINCE I'M MULTIPLYING BY TABLE MAY BE NO DOWNSIDE TO USING A LARGER VALUE, LET'S JUST USE THIS WHILE I WRITE THE CODE
+c = 1
 
 ;SFTODOSTARTEXPERIMENTAL
 
@@ -16,35 +17,25 @@ seed2 = SEED2 ; SFTODO: DO PROPERLY
 seed3 = SEED3 ; SFTODO: DO PROPERLY
 ; a*seed = a*(seed0 + seed1<<8 + seed2<<16 + seed3<<24)
 ;        = a*seed0 + a*(seed1<<8) + a*(seed2<<16) + a*(seed3<<24)
+;        = a*seed0 + (a*seed1)<<8 + (a*seed2)<<16 + (a*seed3)<<24
 
-; a*(b<<8) = (a*b)<<8
-
-    ; tmp = seed0*a
-    ldx seed0
-    lda table0,x:sta tmp
-    lda table1,x:sta tmp+1
-    lda table2,x:sta tmp+2
-    lda table3,x:sta tmp+3
-
-    ; tmp += a*(seed1<<8) == (a*seed1)<<8
     clc
-    ldx seed1
-    lda table0,x:adc tmp+1:sta tmp+1
-    lda table1,x:adc tmp+2:sta tmp+2
-    lda table2,x:adc tmp+3:sta tmp+3
+    ldx seed0
+    ldy seed1
+    lda table0,x:adc #c:sta seed0
+    lda table1,x:adc table0,y:sta seed1
+    lda table2,x:adc table1,y:sta tmp+2 ; SFTODO WE AREN'T USING TMP+[01] SO SHUFFLE DOWN
+    lda table3,x:adc table2,y:sta tmp+3 ; SFTODO: CAN STASH IN Y INSTEAD OF TMP+3
 
-    ; tmp += a*(seed2<<16) == (a*seed2)<<16
     clc
     ldx seed2
-    lda table0,x:adc tmp+2:sta tmp+2
-    lda table1,x:adc tmp+3:sta tmp+3
+    lda table0,x:adc tmp+2:sta seed2
+    lda table1,x:adc tmp+3
 
-    ; tmp += a*(seed3<<24) == (a*seed3)<<16
     clc
     ldx seed3
-    lda table0,x:adc tmp+3:sta tmp+3
+    adc table0,x:sta seed3
 
-    ; TODO: ADD C
     ; TODO: UPDATE *SEED*
 
 .SFTODOHANG jmp SFTODOHANG
