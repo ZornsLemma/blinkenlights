@@ -437,7 +437,7 @@ endmacro
 
 .option_max
     equb 7 ; LED colour
-    equb 4 ; LED shape
+    equb num_led_shapes-1 ; LED shape
     equb 1 ; LED size
     equb num_frequencies-1 ; LED frequency
     equb num_spreads-1 ; LED spread

@@ -81,6 +81,7 @@ with open(sys.argv[1], "w") as f:
                                 0b01111100,
                                 0b00000000))
 
+    f.write("\nnum_led_shapes = %d\n" % (len(labels)/2))
     f.write(".led_shape_list\n")
     for i in range(0, len(labels), 2):
         f.write("    equw %s, %s\n" % (labels[i], labels[i+1]))
