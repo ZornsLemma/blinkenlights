@@ -94,27 +94,9 @@ shared_zp_end = &90
 .cpu_type
     equb 0 ; set at runtime to 0 for NMOS, 1 for CMOS
 
-    ; TODO: Might want to tweak how the auto-generation works, have some Python code generate panel_template_list and a count of number of entries and we just do a single "include" which does everything
     ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
     ; TODO: Should probably default to full-screen rectangle panel on startup
-.panel_template_circle_32
-    incbin "../res/circle-32.bin"
-.panel_template_rectangle_32
-    incbin "../res/rectangle-32.bin"
-.panel_template_triangle_32
-    incbin "../res/triangle-32.bin"
-.panel_template_tiled_diamonds
-    incbin "../res/tiled-diamonds.bin"
-.panel_template_tiled_small_diamonds
-    incbin "../res/tiled-small-diamonds.bin"
-
-num_panel_templates = 5
-.panel_template_list
-    equw panel_template_circle_32
-    equw panel_template_rectangle_32
-    equw panel_template_triangle_32
-    equw panel_template_tiled_diamonds
-    equw panel_template_tiled_small_diamonds
+    include "../res/panel-templates.asm"
 
     include "../res/led-shapes.asm"
 .led_shape_list ; TODO: Generate this list in led-shapes.asm?
