@@ -4,7 +4,7 @@ vdu_set_mode = 22
 colour_red = 1
 colour_white = 7
 
-mode_4_screen = &7000; SFTODO TEMP HACK &5800
+mode_4_screen = &5800
 mode_4_width = 40
 mode_4_height = 32
 mode_4_char_lines = 8
