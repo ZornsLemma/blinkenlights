@@ -12,6 +12,12 @@
     panel_template_top_left_x = 19
     panel_template_top_left_y = 9
 
+; Load YX with the mode 7 screen address of character cell (x, y).
+macro ldyx_mode_7 x, y
+    ldx #lo(mode_7_screen + y*mode_7_width + x)
+    ldy #hi(mode_7_screen + y*mode_7_width + x)
+endmacro
+
     menu_start = *
 
     org shared_zp_start

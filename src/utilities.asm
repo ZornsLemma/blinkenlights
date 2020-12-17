@@ -17,7 +17,7 @@ eot = 128
     jsr print_string_inline:equb 0, 0, 0, eot
     rts
 
-; Print the string following "jsr print_string_inline" (terminate by eot) using
+; Print the string following "jsr print_string_inline" (terminated by eot) using
 ; OSWRCH.
 .print_string_inline
 {

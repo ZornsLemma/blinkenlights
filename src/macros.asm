@@ -18,13 +18,6 @@ macro inc_word_high x
 .no_carry
 endmacro
 
-; Load YX with the mode 7 screen address of character cell (x, y).
-; TODO: Just move this into menu.asm? It's not generally useful.
-macro ldyx_mode_7 x, y
-    ldx #lo(mode_7_screen + y*mode_7_width + x)
-    ldy #hi(mode_7_screen + y*mode_7_width + x)
-endmacro
-
 ; Helper macro for equ_hex_char
 macro equ_hex_digit n
     assert n <= &f
@@ -40,7 +33,7 @@ macro equ_hex_char word, digit
     equ_hex_digit (word >> (digit*4)) and &f
 endmacro
 
-; Generate a string representation of a value as 16-digit hex
+; Generate a string representation of a 16-bit value as hex.
 macro equ_hex16 word
     equ_hex_char word, 3
     equ_hex_char word, 2
