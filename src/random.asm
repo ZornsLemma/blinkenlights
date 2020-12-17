@@ -1,8 +1,83 @@
+{
+; Multiplier taken from "Computationally easy, spectrally good multiplier for
+; congruential pseudorandom number generators" by Guy Steele and Sebastiano
+; Vigna (https://arxiv.org/abs/2001.05304).
+a = &fb85 ; TODO: SINCE I'M MULTIPLYING BY TABLE MAY BE NO DOWNSIDE TO USING A LARGER VALUE, LET'S JUST USE THIS WHILE I WRITE THE CODE
+
+;SFTODOSTARTEXPERIMENTAL
+
+; Set seed = seed*a + c (mod 2^32).
+.advance_seed
+{
+tmp = TMP ; SFTODO: DO PROPERLY
+seed0 = SEED0 ; SFTODO: DO PROPERLY
+seed1 = SEED1 ; SFTODO: DO PROPERLY
+seed2 = SEED2 ; SFTODO: DO PROPERLY
+seed3 = SEED3 ; SFTODO: DO PROPERLY
+; a*seed = a*(seed0 + seed1<<8 + seed2<<16 + seed3<<24)
+;        = a*seed0 + a*(seed1<<8) + a*(seed2<<16) + a*(seed3<<24)
+
+; a*(b<<8) = (a*b)<<8
+
+    ; tmp = seed0*a
+    ldx seed0
+    lda table0,x:sta tmp
+    lda table1,x:sta tmp+1
+    lda table2,x:sta tmp+2
+    lda table3,x:sta tmp+3
+
+    ; tmp += a*(seed1<<8) == (a*seed1)<<8
+    clc
+    ldx seed1
+    lda table0,x:adc tmp+1:sta tmp+1
+    lda table1,x:adc tmp+2:sta tmp+2
+    lda table2,x:adc tmp+3:sta tmp+3
+
+    ; tmp += a*(seed2<<16) == (a*seed2)<<16
+    clc
+    ldx seed2
+    lda table0,x:adc tmp+2:sta tmp+2
+    lda table1,x:adc tmp+3:sta tmp+3
+
+    ; tmp += a*(seed3<<24) == (a*seed3)<<16
+    clc
+    ldx seed3
+    lda table0,x:adc tmp+3:sta tmp+3
+
+    ; TODO: ADD C
+    ; TODO: UPDATE *SEED*
+
+.SFTODOHANG jmp SFTODOHANG
+
+.*urandom8 jmp advance_seed ; SFTODO TEMP HACK
+
+macro make_table_SFTODO n
+    for i, 0, 255
+        equb ((a * i) >> n) and &ff
+    next
+endmacro
+
+    ; TODO: RENAME THESE TABLES TO CONVEY "MULT_BY_A"NESS?
+    align &100
+.table0
+    make_table_SFTODO 0
+.table1
+    make_table_SFTODO 8
+.table2
+    make_table_SFTODO 16
+.table3
+    make_table_SFTODO 24
+
+}
+
+
+
+; TODO: OLD BELOW HERE
+
 ; This is Bruce Clark's code from
 ; http://6502.org/source/integers/random/random.html, just tweaked to assemble
 ; with beebasm.
 
-{
 ; Linear congruential pseudo-random number generator
 ;
 ; Calculate SEED = 1664525 * SEED + 1
@@ -112,7 +187,7 @@
 ;
 ; Note that TMP to TMP+3 are only used after RAND is called.
 ;
-.*urandom8
+.*urandom8_SFTODOOLD
          STA MOD   ; store modulus in MOD
          LDX #32   ; calculate remainder of 2^32 / MOD
          LDA #1
