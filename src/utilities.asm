@@ -2,6 +2,9 @@
 eot = 128
 
 ; Select mode A and turn the cursor off.
+; TODO: It's annoying that the cursor is briefly visible when doing this.
+; Waiting for VSYNC doesn't seem to help. It might be possible to work around
+; this by programming the CRTC directly instead of going via the OS.
 .set_mode
     pha
     lda #vdu_set_mode:jsr oswrch
