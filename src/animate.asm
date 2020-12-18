@@ -265,7 +265,7 @@ endmacro
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
-    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
+    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2:sta sta_count_x_3+2
     lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
     lda #hi(address_low_table):sta lda_address_low_x+2
@@ -318,7 +318,7 @@ endif
 .not_going_to_toggle
 .sbc_imm_ticks_per_frame_2
     sbc #&ff \ patched
-.sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
+.sta_count_x_2
     sta &ff00,x \ patched
     advance_to_next_led
 
@@ -328,7 +328,7 @@ endif
     clc
 .adc_period_x
     adc &ff00,x \ patched
-.sta_count_x_2
+.sta_count_x_3
     sta &ff00,x \ patched
     \ Toggle the LED's state.
 .lda_address_low_x
@@ -369,7 +369,7 @@ endif
 .^advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
-    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
+    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_2+2:inc sta_count_x_3+2
     inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
     inc lda_address_low_x+2

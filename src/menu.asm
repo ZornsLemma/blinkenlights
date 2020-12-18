@@ -289,7 +289,6 @@ endmacro
     ldy #option_panel_template-option_base:jsr adjust_option
     fall_through_to show_panel_template
 
-\ TODO: COMMENT AND RENAME VARS/LABELS IN THIS ROUTINE
 .show_panel_template
 {
     pixel_bitmap = zp_tmp
@@ -301,7 +300,6 @@ endmacro
     offset = panel_template_top_left_y*mode_7_width
     screen_address_top_left = mode_7_screen_copy + panel_template_top_left_x
 
-    \ TODO: Not too happy with some of these names
     sixel_width = 2
     sixel_height = 3
     width_chars = panel_width/sixel_width
@@ -421,6 +419,7 @@ endmacro
 .*option_panel_template
     equb 0
 
+; Maximum (inclusive) values for the options at option_base, in the same order.
 .option_max
     equb 7 ; LED colour
     equb num_led_shapes-1 ; LED shape
