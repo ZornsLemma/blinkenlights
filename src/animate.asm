@@ -5,6 +5,11 @@
     show_rows = FALSE
     assert not(show_missed_vsync_1 and show_rows)
     slow_palette = TRUE
+    ; check_carry makes the code a little bit bigger as well as slower, and if
+    ; the runtime-generated branches would be out of range it can have odd
+    ; effects, so if things go wrong when it's enabled it might be that instead
+    ; of invalid carry values.
+    check_carry = TRUE
 
     scanline_to_interrupt_at = -2
     vsync_position = 35
@@ -79,6 +84,20 @@ endmacro
 macro bne_npc target
     bne target
     check_no_page_crossing target
+endmacro
+
+macro xclc
+    if check_carry
+        .hang
+            bcs hang
+    endif
+endmacro
+
+macro xsec
+    if check_carry
+        .hang
+            bcc hang
+    endif
 endmacro
 
 ; Note that the following two macros are also expanded at runtime by
@@ -299,13 +318,14 @@ if show_missed_vsync_1
 .no_missed_vsync
 endif
 
+    sec
 .^led_loop
 
     \ Decrement this LED's count and do nothing else if it's not yet negative.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda &ff00,x \ patched
-    sec
+    xsec
     ; We need to be able to detect if the LED's count has gone negative. By
     ; checking the count before we subtract ticks_per_frame, we can use the full
     ; 8-bit unsigned range of the count.
@@ -326,7 +346,7 @@ endif
     \ Toggle this LED.
 .toggle_led
     \ This LED's count has gone negative; add the period.
-    clc
+    xclc
 .adc_period_x
     adc &ff00,x \ patched
 .sta_count_x_3
@@ -343,7 +363,7 @@ endif
 .lda_inverse_row_x
     lda &ff00,x \ patched
 .raster_loop
-    cmp inverse_raster_row
+    eor inverse_raster_row ; use eor so we don't alter carry
     beq raster_loop
     ; TIME: From this point, we will take 4+2+5+2.5=14.5 cycles toggling the
     ; state and up to 52 cycles altering screen memory; that's 66.5 cycles. A
@@ -363,9 +383,9 @@ endif
 .^turn_led_on_start
     brk
     equs 0, "No LED!", 0
-    skip 32
+    skip 31
 .^turn_led_on_end
-    skip 24
+    skip 23
 
 .^advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
