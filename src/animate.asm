@@ -9,7 +9,7 @@
     ; the runtime-generated branches would be out of range it can have odd
     ; effects, so if things go wrong when it's enabled it might be that instead
     ; of invalid carry values.
-    check_carry = TRUE
+    check_carry = FALSE
 
     scanline_to_interrupt_at = -2
     vsync_position = 35
