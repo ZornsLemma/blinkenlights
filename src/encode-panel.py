@@ -21,10 +21,8 @@ def encode(png):
 
     output = "../tmp/" + os.path.splitext(os.path.basename(png))[0] + ".bin"
     with open(output, "wb") as f:
-        f.write(chr(c & 0xff))
-        f.write(chr(c >> 8))
-        for b in bitmap:
-            f.write(chr(b))
+        f.write(bytearray([c & 0xff, c >> 8]))
+        f.write(bytearray(bitmap))
     return output
 
 with open("../tmp/panel-templates.asm", "w") as f:
