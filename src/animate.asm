@@ -1,4 +1,5 @@
-{
+{ ; open file scope
+
     ; Debug options
     show_missed_vsync_1 = FALSE
     show_missed_vsync_2 = FALSE
@@ -592,7 +593,7 @@ endif
     rts
 }
 
-}
+} ; close file scope
 
 \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
 

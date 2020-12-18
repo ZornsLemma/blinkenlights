@@ -1,4 +1,4 @@
-{
+{ ; open file scope
 
 ; The idea of multiplying using a table in advance_seed_randomise_a and the
 ; observation that the low byte of the seed will alternate between even and odd
@@ -105,7 +105,7 @@ c = 1
     skip 5
 }
 
-}
+} ; close file scope
 
     align &100
     include "../tmp/random-tables.asm"

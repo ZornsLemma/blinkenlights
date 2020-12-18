@@ -1,4 +1,5 @@
-{
+{ ; open file scope
+
     led_top_left_x = 10
     led_top_left_y = 6
     led_frequency_x = 4
@@ -97,8 +98,8 @@ endmacro
 .pre_start_animation
 {
     mode_7_screen_copy = mode_7_screen - &400
-    graphics = mode_7_graphics_colour_base+1
-    text = mode_7_text_colour_base+7
+    graphics = mode_7_graphics_colour_base+colour_red
+    text = mode_7_text_colour_base+colour_white
     start_y = 10
     offset = start_y*mode_7_width
     lda option_led_colour:cmp option_panel_colour:beq same_colours
@@ -492,7 +493,8 @@ endmacro
 
 .menu_template
     incbin "../tmp/menu-template.bin"
-}
+
+} ; close file scope
 
 .mode_7_led_bitmap_base
 include "../tmp/menu-led-template.asm"

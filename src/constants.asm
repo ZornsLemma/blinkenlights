@@ -15,8 +15,8 @@ mode_7_width = 40
 mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 
-panel_width = 40
-panel_height = 32
+panel_width = mode_4_width
+panel_height = mode_4_height
 max_led_count = panel_width*panel_height
 led_height_large = 6
 led_height_small = 4
