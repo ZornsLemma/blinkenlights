@@ -2,25 +2,25 @@ include "macros.asm"
 include "constants.asm"
 
     org &70
-    guard &90
-    ; random.asm workspace; some of this could potentially overlap with other
-    ; zero page uses if necessary, but for now we're not short on space.
-.SEED0
-    equb 0
-.SEED1
-    equb 0
-.SEED2
-    equb 0
-.SEED3
-    equb 0
-.TMP
-    equd 0
-.MOD
-    equb 0
-.REM
-    equb 0
+    shared_zp_end = &90
+    guard shared_zp_end
 
-    ; Common zero page workspace for other code.
+    ; RNG seed
+.seed0
+    skip 1
+.seed1
+    skip 1
+.seed2
+    skip 1
+.seed3
+    skip 1
+    ; RNG temporary workspace. We're not short of space in zero page and by
+    ; assigning permanent workspace to the RNG we don't have to worry about
+    ; corrupting other values when we call it.
+.rng_tmp
+    skip 4
+
+    ; Common zero page workspace
 .src
     skip 2
 .dest ; TODO: RENAME TO "dst"?
@@ -32,7 +32,6 @@ include "constants.asm"
     ; allocations for the menu and animation code, which communicate via
     ; variables held outside zero page.
 .shared_zp_start
-shared_zp_end = &90
 
     org &2000
     guard mode_4_screen

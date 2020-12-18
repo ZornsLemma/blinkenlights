@@ -44,6 +44,10 @@ with open(sys.argv[1], "w") as f:
                 b_plus_c = max_period - min_period + 2
                 b = int(b_plus_c / 2.0)
                 c = int(b_plus_c - b)
+                # It doesn't make sense to call urandom8(0); urandom8(1) would
+                # always return 0, which is valid but a bit pointless.
+                assert b > 1
+                assert c > 1
                 # print (freq, spread, min_period, max_period, ticks_per_frame, a, b, c)
                 f.write("    equb %3d, %3d, %3d, %3d ; %3.1fHz +/- %2d%%\n" % (ticks_per_frame, a, b, c, freq, spread * 100))
 
