@@ -21,6 +21,7 @@ max_led_count = panel_width*panel_height
 led_height_large = 6
 led_height_small = 4
 
+osbyte_read_host = 0
 osbyte_wait_for_vsync = &13
 osbyte_flush_buffer = &15
 osbyte_read_key = &81

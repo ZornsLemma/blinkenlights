@@ -48,6 +48,15 @@ include "constants.asm"
     equs 0, "Please turn off your second processor!", 0
 .not_tube
 
+    ; Refuse to run on an Electron; a port would probably be possible (ideally
+    ; using sideways RAM so the code can execute while the screen is being
+    ; output to the CRT), but this version won't work as it uses the VIAs.
+    lda #osbyte_read_host:ldx #1:jsr osbyte
+    txa:bne not_electron
+    brk
+    equs 0, "Sorry, not Electron compatible.", 0
+.not_electron
+
     ; Set up the BREAK key to re-enter this code. (We don't do this in !BOOT
     ; because that would cause a crash if the user pressed BREAK before this
     ; code has loaded.) We could use *FX247 but that would also trap CTRL-BREAK;
