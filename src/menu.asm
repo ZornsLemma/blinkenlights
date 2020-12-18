@@ -47,6 +47,8 @@ endmacro
     jsr show_panel_colour_no_vsync
     jsr show_panel_template
 
+    ; There might be some entropy in the current system time, especially if the
+    ; user hasn't done CTRL-BREAK/power on recently.
     jsr update_random_seed
 
     ; Repeatedly check for keys pressed and process them.
