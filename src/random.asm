@@ -60,7 +60,7 @@ c = 1
 .a_randomised
 
     ; Now divide A by divisor and take the remainer.
-    ; Terminology: dividend/divisor => result, remainder
+    ; Terminology: dividend/divisor => quotient (discarded), remainder
     sta dividend
     ldx #8
     lda #0 ; working remainder is held in A
