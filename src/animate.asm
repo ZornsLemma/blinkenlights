@@ -102,7 +102,7 @@ endmacro
     ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
 
     ; Set all the LEDs to be off and just about to turn on, so they start in sync.
-    assert led_count == 5*256
+    assert max_led_count == 5*256
     ldx #0
 .init_state_loop
     lda #0

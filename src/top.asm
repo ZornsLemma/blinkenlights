@@ -79,7 +79,7 @@ include "constants.asm"
     jmp show_menu
 
     ; We include animate.asm first so as to minimise the nuisance of code
-    ; changes causing branches to cross page boundaries.
+    ; changes causing performance-critical branches to cross page boundaries.
     include "animate.asm"
     include "menu.asm"
     include "utilities.asm"
@@ -110,31 +110,29 @@ include "constants.asm"
     ; need to be saved as part of the binary.
     align &100
 .count_table
-    skip led_count ; TODO: rename this max_led_count?
+    skip max_led_count
 
     align &100
 .period_table
-    skip led_count
+    skip max_led_count
 
     align &100
 .state_table
-    skip led_count
+    skip max_led_count
 
     align &100
 .inverse_row_table
-    skip led_count
+    skip max_led_count
 
     align &100
 .address_low_table
-    skip led_count
+    skip max_led_count
 
     align &100
 .address_high_table
-    skip led_count
+    skip max_led_count
 
     puttext "boot.txt", "!BOOT", 0
     save "BLINKEN", start, end
-
-\ TODO: Standardise on & vs $ for hex - probably & - done, but keep this TODO around as I'll probably slip up
 
 ; TODO: Do some basic statistical analysis on the LED periods to check they look sane for a few combinations of parameters
