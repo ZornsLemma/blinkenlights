@@ -90,16 +90,26 @@ endmacro
     equb keyboard_space:equw pre_start_animation
     equb 0
 
-; The user wants to start the animation; just do a basic check that the LED and
-; panel colours aren't the same first.
+; The user wants to start the animation; check that the LED and panel colours
+; aren't the same first and show a message instead if they are.
 .pre_start_animation
 {
+    mode_7_screen_copy = mode_7_screen - &400
     graphics = mode_7_graphics_colour_base+1
     text = mode_7_text_colour_base+7
     start_y = 10
+    offset = start_y*mode_7_width
     lda option_led_colour:cmp option_panel_colour:beq same_colours
     jmp start_animation
 .same_colours
+    ; In order to avoid ugly screen flickering, we save the part of the screen
+    ; we're about to overwrite with the warning and restore it afterwards. (If
+    ; we just did jmp show_menu afterwards, that would take a couple of frames
+    ; and the variable parts would be blanked out during those frames.)
+    ldx #0
+.save_loop
+    lda mode_7_screen+offset,x:sta mode_7_screen_copy,x
+    dex:bne save_loop
     jsr wait_for_vsync
     jsr print_string_inline
     equb 31, 1, start_y ; TODO: MAGIC CONSTANTS
@@ -122,17 +132,19 @@ endmacro
     equb 174
     equb eot
     ; Now wait for the user to release SPACE (the press which tried to start the
-    ; animation), press it again to dismiss the message and release it.
-    jsr wait_for_no_space
-.wait_for_space
-    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
-    inx:bne wait_for_space
-    jsr wait_for_no_space
-    jmp show_menu
-
+    ; animation) and press it again to dismiss the message. (input_loop will
+    ; wait until the press of SPACE to dismiss the message is released.)
 .wait_for_no_space
     lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
     inx:beq wait_for_no_space
+.wait_for_space
+    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
+    inx:bne wait_for_space
+    jsr wait_for_vsync
+    ldx #0
+.restore_loop
+    lda mode_7_screen_copy,x:sta mode_7_screen+offset,x
+    dex:bne restore_loop
     rts
 }
 
