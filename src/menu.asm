@@ -227,20 +227,6 @@ endmacro
 .character_loop
     lda (src),y:eor toggle:sta (dest),y
     dey:bpl character_loop
-    ; As a special case, the "diamond" LED shape gets an extra row of pixels at
-    ; the right when it's shown in "reverse video" for black, otherwise it
-    ; touches the right margin of the reverse video area and looks ugly.
-    ; TODO: I should maybe undo this (and on teletext template too), because
-    ; the actual mode 4 diamond LEDs are smaller/less diamondy than the
-    ; teletext ones now - unless I can improve (and I don't think I can) the
-    ; mode 4 ones, it's probably better (and avoids this special case too)
-    ; for the teletext to look like the mode 4 ones.
-    lda #0
-    ldy toggle:beq not_special_case
-    ldy option_led_shape:cpy #1:bne not_special_case
-    lda #181
-.not_special_case
-    ldy #4:sta (dest),y
     clc:lda src:adc #4:sta src:inc_word_high src+1
     clc:lda dest:adc #mode_7_width:sta dest:inc_word_high dest+1
     dex:bpl line_loop
