@@ -99,6 +99,7 @@ include "constants.asm"
 .jmp_indirect_for_cmos_test
     ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
     ; generating an error.
+    assert lo(mode_4_screen) == 0
     equb opcode_jmp_indirect:equw mode_4_screen+&ff
 
 .cpu_type
