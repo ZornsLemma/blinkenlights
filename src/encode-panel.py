@@ -19,7 +19,7 @@ def encode(png):
                 b = (b << 1) | p
             bitmap.append(b)
 
-    output = os.path.splitext(png)[0] + ".bin"
+    output = "../tmp/" + os.path.splitext(os.path.basename(png))[0] + ".bin"
     with open(output, "wb") as f:
         f.write(chr(c & 0xff))
         f.write(chr(c >> 8))
@@ -27,7 +27,7 @@ def encode(png):
             f.write(chr(b))
     return output
 
-with open("res/panel-templates.asm", "w") as f:
+with open("../tmp/panel-templates.asm", "w") as f:
     f.write("; AUTO-GENERATED, DO NOT EDIT! Edit %s instead.\n\n" % sys.argv[0])
 
     labels = []
@@ -36,7 +36,7 @@ with open("res/panel-templates.asm", "w") as f:
         labels.append(label)
         output = os.path.basename(encode(png))
         f.write(".%s\n" % label)
-        f.write('    incbin "../res/%s"\n' % output)
+        f.write('    incbin "../tmp/%s"\n' % output)
     f.write("\nnum_panel_templates = %d\n" % len(labels))
     f.write(".panel_template_list\n")
     for label in labels:

@@ -1,4 +1,3 @@
 *.ssd
 *.lst
-*.bin
-res/*.asm
+tmp/

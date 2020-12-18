@@ -108,7 +108,7 @@ c = 1
 }
 
     align &100
-    include "../res/random-tables.asm"
+    include "../tmp/random-tables.asm"
 .upper_threshold_table
     equb 0
     for i, 1, 255

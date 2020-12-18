@@ -431,12 +431,12 @@ endmacro
     equb num_panel_templates-1 ; panel template
 
 .menu_template
-    incbin "../res/menu-template.bin"
+    incbin "../tmp/menu-template.bin"
 }
 
 .mode_7_led_bitmap_base
-include "../res/menu-led-template.asm"
+include "../tmp/menu-led-template.asm"
 
-include "../res/led-freq-spread.asm"
+include "../tmp/led-freq-spread.asm"
 
 ; TODO: DON'T ALLOW ANIM TO START WITH FG AND BG THE SAME!

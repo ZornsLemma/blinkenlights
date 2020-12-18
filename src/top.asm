@@ -84,8 +84,8 @@ include "constants.asm"
     include "menu.asm"
     include "utilities.asm"
     ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
-    include "../res/panel-templates.asm"
-    include "../res/led-shapes.asm"
+    include "../tmp/panel-templates.asm"
+    include "../tmp/led-shapes.asm"
 
 .jmp_indirect_for_cmos_test
     ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
