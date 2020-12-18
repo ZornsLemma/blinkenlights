@@ -112,5 +112,5 @@ c = 1
 .upper_threshold_table
     equb 0
     for i, 1, 255
-        equb (256 div i)*i and &ff
+        equb ((256 div i)*i) and &ff
     next
