@@ -301,13 +301,14 @@ endif
 
 .^led_loop
 
-    \ Decrement this LED's count and do nothing else if it's not yet zero.
+    \ Decrement this LED's count and do nothing else if it's not yet negative.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda &ff00,x \ patched
     sec
-    \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
-    \ the count. This is an experiment.
+    ; We need to be able to detect if the LED's count has gone negative. By
+    ; checking the count before we subtract ticks_per_frame, we can use the full
+    ; 8-bit unsigned range of the count.
     bmi_npc not_going_to_toggle
 .sbc_imm_ticks_per_frame_1
     sbc #&ff \ patched
