@@ -87,8 +87,54 @@ endmacro
     equb keyboard_7:equw adjust_panel_colour
     equb keyboard_8:equw adjust_panel_template
     equb keyboard_0:equw randomise_options
-    equb keyboard_space:equw start_animation
+    equb keyboard_space:equw pre_start_animation
     equb 0
+
+; The user wants to start the animation; just do a basic check that the LED and
+; panel colours aren't the same first.
+.pre_start_animation
+{
+    graphics = mode_7_graphics_colour_base+1
+    text = mode_7_text_colour_base+7
+    start_y = 10
+    lda option_led_colour:cmp option_panel_colour:beq same_colours
+    jmp start_animation
+.same_colours
+    jsr wait_for_vsync
+    jsr print_string_inline
+    equb 31, 1, start_y ; TODO: MAGIC CONSTANTS
+    equb graphics, 188
+    for i, 1, 35
+        equb 172
+    next
+    equb 236
+    equb 31, 1, start_y+1 ; TODO: MAGIC CONSTANTS
+    equb graphics, 181, text, "Sorry, please select different   ", graphics, 234
+    equb 31, 1, start_y+2 ; TODO: MAGIC CONSTANTS
+    equb graphics, 181, text, "LED and panel colours before     ", graphics, 234
+    equb 31, 1, start_y+3 ; TODO: MAGIC CONSTANTS
+    equb graphics, 181, text, "starting. Press SPACE...         ", graphics, 234
+    equb 31, 1, start_y+4 ; TODO: MAGIC CONSTANTS
+    equb graphics, 173
+    for i, 1, 35
+        equb 172
+    next
+    equb 174
+    equb eot
+    ; Now wait for the user to release SPACE (the press which tried to start the
+    ; animation), press it again to dismiss the message and release it.
+    jsr wait_for_no_space
+.wait_for_space
+    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
+    inx:bne wait_for_space
+    jsr wait_for_no_space
+    jmp show_menu
+
+.wait_for_no_space
+    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
+    inx:beq wait_for_no_space
+    rts
+}
 
 .randomise_options
 {

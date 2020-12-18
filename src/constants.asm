@@ -11,6 +11,7 @@ mode_4_char_lines = 8
 
 mode_7_screen = &7c00
 mode_7_width = 40
+mode_7_text_colour_base = 128
 mode_7_graphics_colour_base = 144
 
 panel_width = 40
