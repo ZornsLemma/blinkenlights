@@ -496,5 +496,3 @@ endmacro
 include "../tmp/menu-led-template.asm"
 
 include "../tmp/led-freq-spread.asm"
-
-; TODO: DON'T ALLOW ANIM TO START WITH FG AND BG THE SAME!
