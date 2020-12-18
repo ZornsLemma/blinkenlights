@@ -1,8 +1,9 @@
 {
 
 ; The idea of multiplying using a table in advance_seed_randomise_a and the
-; observation that the low byte of the seed will always be odd were originated
-; by Bruce Clark (http://6502.org/source/integers/random/random.html).
+; observation that the low byte of the seed will alternate between even and odd
+; values were originated by Bruce Clark
+; (http://6502.org/source/integers/random/random.html).
 
 c = 1
 
@@ -30,8 +31,9 @@ c = 1
     ldx seed3
     adc mult_by_a_table0,x:sta seed3
 
-    ; A contains the most significant byte of the seed, which is a reasonable choice
-    ; for a random 8-bit byte. (We must not use seed0 as it will always be odd.)
+    ; A contains the most significant byte of the seed, which is a reasonable
+    ; choice for a random 8-bit byte. (We must not use seed0 as it will
+    ; alternate between being even and odd.)
     rts
 }
 
