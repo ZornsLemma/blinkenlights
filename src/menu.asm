@@ -112,19 +112,19 @@ endmacro
     dex:bne save_loop
     jsr wait_for_vsync
     jsr print_string_inline
-    equb 31, 1, start_y ; TODO: MAGIC CONSTANTS
+    equb vdu_move_text_cursor, 1, start_y
     equb graphics, 188
     for i, 1, 35
         equb 172
     next
     equb 236
-    equb 31, 1, start_y+1 ; TODO: MAGIC CONSTANTS
+    equb vdu_move_text_cursor, 1, start_y+1
     equb graphics, 181, text, "Sorry, please select different   ", graphics, 234
-    equb 31, 1, start_y+2 ; TODO: MAGIC CONSTANTS
+    equb vdu_move_text_cursor, 1, start_y+2
     equb graphics, 181, text, "LED and panel colours before     ", graphics, 234
-    equb 31, 1, start_y+3 ; TODO: MAGIC CONSTANTS
+    equb vdu_move_text_cursor, 1, start_y+3
     equb graphics, 181, text, "starting. Press SPACE...         ", graphics, 234
-    equb 31, 1, start_y+4 ; TODO: MAGIC CONSTANTS
+    equb vdu_move_text_cursor, 1, start_y+4
     equb graphics, 173
     for i, 1, 35
         equb 172

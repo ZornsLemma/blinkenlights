@@ -1,5 +1,6 @@
 vdu_set_palette = 19
 vdu_set_mode = 22
+vdu_move_text_cursor = 31
 
 colour_red = 1
 colour_white = 7
