@@ -322,7 +322,6 @@ endif
 .^led_loop
 
     \ Decrement this LED's count and do nothing else if it's not yet negative.
-    \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda &ff00,x \ patched
     xsec
