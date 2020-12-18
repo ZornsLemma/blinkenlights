@@ -50,6 +50,3 @@ with open(sys.argv[1], "w") as f:
                 assert c > 1
                 # print (freq, spread, min_period, max_period, ticks_per_frame, a, b, c)
                 f.write("    equb %3d, %3d, %3d, %3d ; %3.1fHz +/- %2d%%\n" % (ticks_per_frame, a, b, c, freq, spread * 100))
-
-# TODO: Move all these .py utilities into src or res directory instead of root
-# of repository?
