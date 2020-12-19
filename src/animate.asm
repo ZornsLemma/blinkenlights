@@ -472,8 +472,8 @@ endif
         ; Emit an "lda #bitmap" instruction.
         ldy #0:lda (src),y:beq done
         pha
-        lda #opcode_lda_imm:jsr emit
-        pla:jsr emit
+        lda #opcode_lda_imm:jsr emit_inc
+        pla:jsr emit_inc
         ; Loop over the scanlines this bitmap needs to be written to and emit code.
     .line_loop
         inc_word src
@@ -483,8 +483,8 @@ endif
         tax:bne not_65c02_line_0
         ; We're on a 65C02 and we're modifying scanline 0, so we can use the
         ; zp indirect addressing mode.
-        lda #opcode_sta_zp_ind:jsr emit
-        lda #dest:jsr emit
+        lda #opcode_sta_zp_ind:jsr emit_inc
+        lda #dest:jsr emit_inc
         jmp line_loop
     .not_65c02_line_0
         ; Can we set Y appropriately using iny or dey? (This is no faster than "ldy
@@ -493,19 +493,19 @@ endif
         dec runtime_y:dec runtime_y:cmp runtime_y:beq emit_dey
         ; No, we can't, so emit "ldy #n".
         sta runtime_y
-        lda #opcode_ldy_imm:jsr emit
-        lda runtime_y:jsr emit
+        lda #opcode_ldy_imm:jsr emit_inc
+        lda runtime_y:jsr emit_inc
         jmp y_set
     .emit_iny
         lda #opcode_iny:bne emit_iny_dey
     .emit_dey
         lda #opcode_dey
     .emit_iny_dey
-        jsr emit
+        jsr emit_inc
     .y_set
         ; Y is now set, so emit "sta (dest),y".
-        lda #opcode_sta_zp_ind_y:jsr emit
-        lda #dest:jsr emit
+        lda #opcode_sta_zp_ind_y:jsr emit_inc
+        lda #dest:jsr emit_inc
         jmp line_loop
     .line_loop_done
         inc_word src
@@ -513,11 +513,11 @@ endif
     .done
 
         ; Emit code equivalent to our "advance_to_next_led" macro.
-        lda #opcode_inx:jsr emit
-        lda #opcode_bne:jsr emit
-        sec:lda #lo(led_loop-1):sbc dest:jsr emit
-        lda #opcode_beq:jsr emit
-        sec:lda #lo(advance_to_next_led_group-1):sbc dest:jsr emit
+        lda #opcode_inx:jsr emit_inc
+        lda #opcode_bne:jsr emit_inc
+        sec:lda #lo(led_loop-1):sbc dest:jsr emit_inc
+        lda #opcode_beq:jsr emit_inc
+        sec:lda #lo(advance_to_next_led_group-1):sbc dest:jsr emit_inc
 
         ; Check we haven't overflowed the available space; we have iff
         ; turn_led_on_end < dest.
@@ -569,7 +569,8 @@ endif
         dex:bpl line_loop
         lda #0:jsr emit_dec
         lda #opcode_lda_imm:jsr emit_dec
-        ; Check we haven't overflow the available space; we have iff dest < turn_led_on_end-1.
+        ; Check we haven't overflowed the available space; we have iff dest <
+        ; turn_led_on_end-1.
         lda dest+1:cmp #hi(turn_led_on_end-1):bne use_high_byte_result
         lda dest:cmp #lo(turn_led_on_end-1)
     .use_high_byte_result
@@ -583,7 +584,7 @@ endif
 
     rts
 
-.emit
+.emit_inc
     ldy #0:sta (dest),y
     inc_word dest
     rts
