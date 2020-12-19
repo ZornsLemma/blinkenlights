@@ -20,6 +20,10 @@ You'll need a copy of [BeebAsm](https://github.com/stardot/beebasm/) and Python 
 
 If you're on a Unix-like system and have beebasm on your PATH, running "./make.sh" should do everything necessary. If you're on another platform it shouldn't be too hard to translate make.sh into your platform's equivalent, or to execute the commands manually.
 
+## Copying
+
+This code is covered by the [MIT](https://opensource.org/licenses/MIT) licence; see the LICENCE.txt file.
+
 ## Technical notes
 
 At the start of the animation each LED is assigned a randomly generated frequency based on the parameters specified in the user interface. The LED flashes at that exact frequency forever; the patterns arise from the interactions of the LEDs all flashing at slightly different frequencies. The patterns are entirely in the eye of the beholder; the LEDs don't interact with one another in any way, except that they are all started off initially in sync.

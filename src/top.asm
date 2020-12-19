@@ -23,7 +23,7 @@ guard shared_zp_end
 ; Common zero page workspace
 .src
     skip 2
-.dest ; TODO: RENAME TO "dst"?
+.dest
     skip 2
 .zp_tmp
     skip 4
