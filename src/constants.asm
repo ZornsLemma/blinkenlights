@@ -2,7 +2,10 @@ vdu_set_palette = 19
 vdu_set_mode = 22
 vdu_move_text_cursor = 31
 
+colour_black = 0
 colour_red = 1
+colour_blue = 4
+colour_magenta = 5
 colour_white = 7
 
 mode_4_screen = &5800

@@ -317,7 +317,7 @@ if show_missed_vsync_2
     lda frame_count:sta &5800
 endif
 if show_missed_vsync_1
-    lda #1 eor 7:set_background_a
+    lda #colour_red eor 7:set_background_a
 .no_missed_vsync
 endif
 
@@ -381,7 +381,7 @@ endif
 .^beq_turn_led_off
     beq_npc advance_to_next_led_group \ patched
 
-    ; compile_led_shape generates code at runtime here
+    ; compile_led_shape generates code at runtime here.
 .^turn_led_on_start
     brk
     equs 0, "No LED!", 0
@@ -438,7 +438,7 @@ endif
     lda #hi(row_us):sta user_via_timer_1_high_order_counter
     lda #32:sta inverse_raster_row
 if show_rows
-    lda #4 eor 7:set_background_a ; TODO: CHANGE ALL COLOUR NUMBERS TO NAMED CONSTANTS?
+    lda #colour_blue eor 7:set_background_a
 endif
     pla:sta &fc:rti
 
@@ -446,10 +446,10 @@ endif
     lda #&ff:sta user_via_timer_1_low_order_latch:sta user_via_timer_1_high_order_counter
     inc frame_count
 if show_rows
-    lda #5 eor 7:set_background_a
+    lda #colour_magenta eor 7:set_background_a
 endif
 if show_missed_vsync_1
-    lda #0 eor 7:set_background_a
+    lda #colour_black eor 7:set_background_a
 endif
     pla:sta &fc:rti \ jmp return_to_os
 .return_to_os_hack
