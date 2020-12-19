@@ -112,9 +112,9 @@ include "../tmp/led-shapes.asm"
     equ_hex16 start
     equs "|M", 13
 
-    ; random.asm finishes with some page-aligned tables, so we include it last in
-    ; order to avoid multiple alignment-induced holes.
-    include "random.asm"
+; random.asm finishes with some page-aligned tables, so we include it last in
+; order to avoid multiple alignment-induced holes.
+include "random.asm"
 
 .end
 
