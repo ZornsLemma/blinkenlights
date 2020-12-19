@@ -115,12 +115,12 @@ endmacro
 
 macro advance_to_next_led
     advance_to_next_led_fall_through
-    beq advance_to_next_led_group \ always branch
+    beq advance_to_next_led_group ; always branch
 endmacro
 
 .*start_animation
 {
-    \ Select mode 4 and set the foreground and background colours.
+    ; Select mode 4 and set the foreground and background colours.
     lda #4:jsr set_mode
     ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
     ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
@@ -149,14 +149,14 @@ endmacro
     lda led_shape_list+1,y:tay
     jsr compile_led_shape
 
-    \ Set up the LEDs based on the panel template.
+    ; Set up the LEDs based on the panel template.
     {
         jsr get_panel_template_address
         stx src:sty src+1
 
-        \ The first two bytes of the template are the number of LEDs; we need to set up
-        \ the per-frame initialisation accordingly, and if we don't have an exact
-        \ multiple of 256 LEDs we need to take that into account by starting with X>0.
+        ; The first two bytes of the template are the number of LEDs; we need to set up
+        ; the per-frame initialisation accordingly, and if we don't have an exact
+        ; multiple of 256 LEDs we need to take that into account by starting with X>0.
         ldy #1:lda (src),y:sta lda_imm_led_groups+1
         dey:lda (src),y:beq exact_multiple
         inc lda_imm_led_groups+1
@@ -188,13 +188,13 @@ endmacro
         ldy working_index
         lda #mode_4_height:sec:sbc led_y
     .sta_inverse_row_table_x
-        sta &ff00,y \ patched
+        sta &ff00,y ; patched
         lda dest
     .sta_address_low_table_x
-        sta &ff00,y \ patched
+        sta &ff00,y ; patched
         lda dest+1
     .sta_address_high_table_x
-        sta &ff00,y \ patched
+        sta &ff00,y ; patched
         inc working_index
         bne not_next_led_group
         inc sta_inverse_row_table_x+2
@@ -263,23 +263,23 @@ endmacro
         ldx working_index
         lda period
     .sta_period_table_x
-        sta &ff00,x \ patched
+        sta &ff00,x ; patched
         inc working_index:bne generate_random_led_loop
         inc sta_period_table_x+2
         dec led_group_count:bne generate_random_led_loop
     }
 
-    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
+    ; Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
 
     sei
-    \ We're going to shut the OS out of the loop to make things more stable, so
-    \ disable all interrupts then re-enable the ones we're interested in.
+    ; We're going to shut the OS out of the loop to make things more stable, so
+    ; disable all interrupts then re-enable the ones we're interested in.
     lda #&7f
     sta system_via_interrupt_enable_register
     sta user_via_interrupt_enable_register
-    lda #&82:sta system_via_interrupt_enable_register \ enable VSYNC interrupt
-    lda #&c0:sta user_via_interrupt_enable_register \ enable timer 1 interrupt
-    \ Set timer 1 to continuous interrupts mode.
+    lda #&82:sta system_via_interrupt_enable_register ; enable VSYNC interrupt
+    lda #&c0:sta user_via_interrupt_enable_register ; enable timer 1 interrupt
+    ; Set timer 1 to continuous interrupts mode.
     lda #&40:sta user_via_auxiliary_control_register
     lda #lo(irq_handler):sta irq1v
     lda #hi(irq_handler):sta irq1v+1
@@ -288,7 +288,7 @@ endmacro
 
 .forever_loop
 
-    \ Initialise all the addresses in the self-modifying code.
+    ; Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2:sta sta_count_x_3+2
     lda #hi(period_table):sta adc_period_x+2
     lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
@@ -296,12 +296,12 @@ endmacro
     lda #hi(address_high_table):sta lda_address_high_x+2
     lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
-    \ Reset X and led_group_count.
+    ; Reset X and led_group_count.
 .lda_imm_led_groups
-    lda #&ff \ patched
+    lda #&ff ; patched
     sta led_group_count
 .lda_imm_initial_x
-    ldx #0 \ patched
+    ldx #0 ; patched
 
     ; The idea here is that if we took less than 1/50th second to process the
     ; last update we wait for the next frame to start, but if we took longer we
@@ -326,46 +326,46 @@ endif
     sec
 .^led_loop
 
-    \ Decrement this LED's count and do nothing else if it's not yet negative.
+    ; Decrement this LED's count and do nothing else if it's not yet negative.
 .lda_count_x
-    lda &ff00,x \ patched
+    lda &ff00,x ; patched
     xsec
     ; We need to be able to detect if the LED's count has gone negative. By
     ; checking the count before we subtract ticks_per_frame, we can use the full
     ; 8-bit unsigned range of the count.
     bmi_npc not_going_to_toggle
 .sbc_imm_ticks_per_frame_1
-    sbc #&ff \ patched
+    sbc #&ff ; patched
     bmi_npc toggle_led
 .sta_count_x_1
-    sta &ff00,x \ patched
+    sta &ff00,x ; patched
     advance_to_next_led
 .not_going_to_toggle
 .sbc_imm_ticks_per_frame_2
-    sbc #&ff \ patched
+    sbc #&ff ; patched
 .sta_count_x_2
-    sta &ff00,x \ patched
+    sta &ff00,x ; patched
     advance_to_next_led
 
-    \ Toggle this LED.
+    ; Toggle this LED.
 .toggle_led
-    \ This LED's count has gone negative; add the period.
+    ; This LED's count has gone negative; add the period.
     xclc
 .adc_period_x
-    adc &ff00,x \ patched
+    adc &ff00,x ; patched
 .sta_count_x_3
-    sta &ff00,x \ patched
-    \ Toggle the LED's state.
+    sta &ff00,x ; patched
+    ; Toggle the LED's state.
 .lda_address_low_x
-    lda &ff00,x \ patched
+    lda &ff00,x ; patched
     sta dest
 .lda_address_high_x
-    lda &ff00,x \ patched
+    lda &ff00,x ; patched
     sta dest+1
     ; We're about to modify screen memory, so if the raster is currently on this
     ; row, wait for it to pass.
 .lda_inverse_row_x
-    lda &ff00,x \ patched
+    lda &ff00,x ; patched
 .raster_loop
     eor inverse_raster_row ; use eor so we don't alter carry
     beq raster_loop
@@ -376,12 +376,12 @@ endif
     ; if there's a little jitter or if the raster enters this character row
     ; immediately after the above test passed.
 .lda_state_x
-    lda &ff00,x \ patched
+    lda &ff00,x ; patched
     eor #255
 .sta_state_x
-    sta &ff00,x \ patched
+    sta &ff00,x ; patched
 .^beq_turn_led_off
-    beq_npc advance_to_next_led_group \ patched
+    beq_npc advance_to_next_led_group ; patched
 
     ; compile_led_shape generates code at runtime here.
 .^turn_led_on_start
@@ -392,8 +392,8 @@ endif
     skip 23
 
 .^advance_to_next_led_group
-    \ X has wrapped around to 0, so advance all the addresses in the self-modifying
-    \ code to the next page.
+    ; X has wrapped around to 0, so advance all the addresses in the self-modifying
+    ; code to the next page.
     inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_2+2:inc sta_count_x_3+2
     inc adc_period_x+2
     inc lda_state_x+2:inc sta_state_x+2
@@ -416,18 +416,18 @@ endif
 {
     lda irq_tmp_a:pha
     lda system_via_interrupt_flag_register:and #&02:beq try_timer1
-    \ Handle VSYNC interrupt.
+    ; Handle VSYNC interrupt.
     lda #lo(vsync_to_visible_start_us):sta user_via_timer_1_low_order_latch
     lda #hi(vsync_to_visible_start_us):sta user_via_timer_1_high_order_counter
-    lda system_via_register_a \ clear the VSYNC interrupt
+    lda system_via_register_a ; clear the VSYNC interrupt
     lda #255:sta inverse_raster_row
 .do_rti
     pla:sta irq_tmp_a:rti
 
 .try_timer1
     bit user_via_interrupt_flag_register:bvc do_rti
-    \ Handle timer 1 interrupt.
-    lda user_via_timer_1_low_order_latch \ clear timer 1 interrupt flag
+    ; Handle timer 1 interrupt.
+    lda user_via_timer_1_low_order_latch ; clear timer 1 interrupt flag
     dec inverse_raster_row:bmi start_of_visible_region:beq end_of_visible_region
 if show_rows
     lda inverse_raster_row:and #3:eor #7:set_background_a
@@ -452,7 +452,7 @@ endif
 if show_missed_vsync_1
     lda #colour_black eor 7:set_background_a
 endif
-    pla:sta irq_tmp_a:rti \ jmp return_to_os
+    pla:sta irq_tmp_a:rti ; jmp return_to_os
 .return_to_os_hack
     pla:sta irq_tmp_a:rti
 }
@@ -598,5 +598,3 @@ endif
 }
 
 } ; close file scope
-
-; TODO: STANDARDISE ON ; NOT \ FOR COMMENTS

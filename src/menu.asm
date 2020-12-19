@@ -378,7 +378,7 @@ clear shared_zp_start, shared_zp_end
         dex:bne loop
     }
 
-    \ Skip the count of LEDs at the start of the panel template.
+    ; Skip the count of LEDs at the start of the panel template.
     jsr get_panel_template_address
     txa:clc:adc #2:sta src
     tya:adc #0:sta src+1
@@ -401,7 +401,7 @@ clear shared_zp_start, shared_zp_end
     asl pixel_bitmap:rol a
     tay
 .lda_pixel_to_sixel_row_table_y
-    lda &ffff,y \ patched
+    lda &ffff,y ; patched
     ldy sixel_inverse_row:cpy #sixel_height-1:bne not_first_sixel_row
     ldy #0:sta (dest),y:jmp done_first_sixel_row
 .not_first_sixel_row
@@ -439,24 +439,24 @@ clear shared_zp_start, shared_zp_end
     rts
 
 .pixel_to_sixel_row_table
-    \ Bottom row of sixel
-    \ Sixel value    pixels
-    equb %10100000 \ %00
-    equb %11100000 \ %01
-    equb %10110000 \ %10
-    equb %11110000 \ %11
-    \ Middle row of sixel
-    \ Sixel value    pixels
-    equb %10100000 \ %00
-    equb %10101000 \ %01
-    equb %10100100 \ %10
-    equb %10101100 \ %11
-    \ Top row of sixel
-    \ Sixel value    pixels
-    equb %10100000 \ %00
-    equb %10100010 \ %01
-    equb %10100001 \ %10
-    equb %10100011 \ %11
+    ; Bottom row of sixel
+    ; Sixel value    pixels
+    equb %10100000 ; %00
+    equb %11100000 ; %01
+    equb %10110000 ; %10
+    equb %11110000 ; %11
+    ; Middle row of sixel
+    ; Sixel value    pixels
+    equb %10100000 ; %00
+    equb %10101000 ; %01
+    equb %10100100 ; %10
+    equb %10101100 ; %11
+    ; Top row of sixel
+    ; Sixel value    pixels
+    equb %10100000 ; %00
+    equb %10100010 ; %01
+    equb %10100001 ; %10
+    equb %10100011 ; %11
 }
 
 .wait_for_vsync
