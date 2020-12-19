@@ -2,8 +2,8 @@
 
 ; The idea of multiplying using a table in advance_seed_randomise_a and the
 ; observation that the low byte of the seed will alternate between even and odd
-; values were originated by Bruce Clark
-; (http://6502.org/source/integers/random/random.html).
+; values are taken from Bruce Clark's article
+; http://6502.org/source/integers/random/random.html.
 
 c = 1
 

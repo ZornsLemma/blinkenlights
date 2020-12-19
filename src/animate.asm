@@ -1,30 +1,30 @@
 { ; open file scope
 
-    ; Debug options
-    show_missed_vsync_1 = FALSE
-    show_missed_vsync_2 = FALSE
-    show_rows = FALSE
-    assert not(show_missed_vsync_1 and show_rows)
-    slow_palette = TRUE
-    ; check_carry makes the code a little bit bigger as well as slower, and if
-    ; the runtime-generated branches would be out of range it can have odd
-    ; effects, so if things go wrong when it's enabled it might be that instead
-    ; of invalid carry values.
-    check_carry = FALSE
+; Debug options
+show_missed_vsync_1 = FALSE
+show_missed_vsync_2 = FALSE
+show_rows = FALSE
+assert not(show_missed_vsync_1 and show_rows)
+slow_palette = TRUE
+; check_carry makes the code a little bit bigger as well as slower, and if
+; the runtime-generated branches would be out of range it can have odd
+; effects, so if things go wrong when it's enabled it might be that instead
+; of invalid carry values.
+check_carry = FALSE
 
-    scanline_to_interrupt_at = -2
-    vsync_position = 35
-    total_rows = 39
-    us_per_scanline = 64
-    us_per_row = 8*us_per_scanline
-    vsync_to_visible_start_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
-    row_us = us_per_row - 2
+scanline_to_interrupt_at = -2
+vsync_position = 35
+total_rows = 39
+us_per_scanline = 64
+us_per_row = 8*us_per_scanline
+vsync_to_visible_start_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+row_us = us_per_row - 2
 
-    animate_start = *
+animate_start = *
 
-    org shared_zp_start
-    guard shared_zp_end
-    clear shared_zp_start, shared_zp_end
+org shared_zp_start
+guard shared_zp_end
+clear shared_zp_start, shared_zp_end
 .led_group_count
     skip 1
 .frame_count
@@ -38,22 +38,22 @@
 .led_y
     skip 1
 
-    org animate_start
-    guard mode_4_screen
+org animate_start
+guard mode_4_screen
 
-    irq1v = &204
+irq1v = &204
 
-    ula_palette = &fe21
+ula_palette = &fe21
 
-    system_via_register_a = &fe41
-    system_via_interrupt_flag_register = &fe4d
-    system_via_interrupt_enable_register = &fe4e
+system_via_register_a = &fe41
+system_via_interrupt_flag_register = &fe4d
+system_via_interrupt_enable_register = &fe4e
 
-    user_via_timer_1_low_order_latch = &fe64
-    user_via_timer_1_high_order_counter = &fe65
-    user_via_auxiliary_control_register = &fe6b
-    user_via_interrupt_flag_register = &fe6d
-    user_via_interrupt_enable_register = &fe6e
+user_via_timer_1_low_order_latch = &fe64
+user_via_timer_1_high_order_counter = &fe65
+user_via_auxiliary_control_register = &fe6b
+user_via_interrupt_flag_register = &fe6d
+user_via_interrupt_enable_register = &fe6e
 
 macro set_background_a
     sta ula_palette
@@ -68,6 +68,8 @@ macro set_background_a
     endif
 endmacro
 
+; A macro for use after performance-critical branch instructions to check that
+; no page-crossing penalty is incurred.
 macro check_no_page_crossing target
     assert hi(*) == hi(target)
 endmacro
@@ -410,7 +412,7 @@ endif
 ; line it's 0.
 .irq_handler
 {
-    lda &fc:pha
+    lda &fc:pha ; TODO: MAGIC CONSTANT
     lda system_via_interrupt_flag_register:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
     lda #lo(vsync_to_visible_start_us):sta user_via_timer_1_low_order_latch
@@ -436,7 +438,7 @@ endif
     lda #hi(row_us):sta user_via_timer_1_high_order_counter
     lda #32:sta inverse_raster_row
 if show_rows
-    lda #4 eor 7:set_background_a
+    lda #4 eor 7:set_background_a ; TODO: CHANGE ALL COLOUR NUMBERS TO NAMED CONSTANTS?
 endif
     pla:sta &fc:rti
 

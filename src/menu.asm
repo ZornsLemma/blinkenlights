@@ -1,17 +1,17 @@
 { ; open file scope
 
-    led_top_left_x = 10
-    led_top_left_y = 6
-    led_frequency_x = 4
-    led_frequency_y = 11
-    led_spread_x = 8
-    led_spread_y = 12
-    led_distribution_x = 4
-    led_distribution_y = 13
-    panel_colour_top_left_x = 25
-    panel_colour_top_left_y = 6
-    panel_template_top_left_x = 19
-    panel_template_top_left_y = 9
+led_top_left_x = 10
+led_top_left_y = 6
+led_frequency_x = 4
+led_frequency_y = 11
+led_spread_x = 8
+led_spread_y = 12
+led_distribution_x = 4
+led_distribution_y = 13
+panel_colour_top_left_x = 25
+panel_colour_top_left_y = 6
+panel_template_top_left_x = 19
+panel_template_top_left_y = 9
 
 ; Load YX with the mode 7 screen address of character cell (x, y).
 macro ldyx_mode_7 x, y
@@ -19,11 +19,12 @@ macro ldyx_mode_7 x, y
     ldy #hi(mode_7_screen + y*mode_7_width + x)
 endmacro
 
-    menu_start = *
+menu_start = *
 
-    org shared_zp_start
-    guard shared_zp_end
-    clear shared_zp_start, shared_zp_end
+org shared_zp_start
+guard shared_zp_end
+clear shared_zp_start, shared_zp_end
+
 .working_index
     skip 1
 
@@ -74,7 +75,7 @@ endmacro
     ldy working_index:ldx input_table,y
     lda #osbyte_read_key:ldy #&ff:jsr osbyte
     inx:beq still_down
-    bne key_loop
+    bne key_loop ; always branch
 
 .jmp_via_src
     jmp (src)

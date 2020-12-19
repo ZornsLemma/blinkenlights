@@ -1,11 +1,11 @@
 include "macros.asm"
 include "constants.asm"
 
-    org &70
-    shared_zp_end = &90
-    guard shared_zp_end
+org &70
+shared_zp_end = &90
+guard shared_zp_end
 
-    ; RNG seed
+; RNG seed
 .seed0
     skip 1
 .seed1
@@ -14,13 +14,13 @@ include "constants.asm"
     skip 1
 .seed3
     skip 1
-    ; RNG temporary workspace. We're not short of space in zero page and by
-    ; assigning permanent workspace to the RNG we don't have to worry about
-    ; corrupting other values when we call it.
+; RNG temporary workspace. We're not short of space in zero page and by
+; assigning permanent workspace to the RNG we don't have to worry about
+; corrupting other values when we call it.
 .rng_tmp
     skip 4
 
-    ; Common zero page workspace
+; Common zero page workspace
 .src
     skip 2
 .dest ; TODO: RENAME TO "dst"?
@@ -28,15 +28,16 @@ include "constants.asm"
 .zp_tmp
     skip 4
 
-    ; The remaining zero page space is carved up into separate overlapping
-    ; allocations for the menu and animation code, which communicate via
-    ; variables held outside zero page.
+; The remaining zero page space is carved up into separate overlapping
+; allocations for the menu and animation code, which communicate via variables
+; held outside zero page.
 .shared_zp_start
 
-    org &2000
-    guard mode_4_screen
+org &2000
+guard mode_4_screen
 
 .start
+{
     ; Refuse to run on a second processor. (Because we want to re-enter this
     ; code using CALL on BREAK via *KEY10, we can't just set our load/exec
     ; addresses to force execution in the host.)
@@ -86,15 +87,16 @@ include "constants.asm"
     }
 
     jmp show_menu
+}
 
-    ; We include animate.asm first so as to minimise the nuisance of code
-    ; changes causing performance-critical branches to cross page boundaries.
-    include "animate.asm"
-    include "menu.asm"
-    include "utilities.asm"
-    ; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time.
-    include "../tmp/panel-templates.asm"
-    include "../tmp/led-shapes.asm"
+; We include animate.asm first so as to minimise the nuisance of code changes
+; causing performance-critical branches to cross page boundaries.
+include "animate.asm"
+include "menu.asm"
+include "utilities.asm"
+; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time. - also/instead a "stippled" full-screen rectangle (50% grey dither) - and a tiled-triangle effect
+include "../tmp/panel-templates.asm"
+include "../tmp/led-shapes.asm"
 
 .jmp_indirect_for_cmos_test
     ; jmp (mode_4_screen+&ff); we assemble this via directives to stop beebasm
@@ -116,33 +118,33 @@ include "constants.asm"
 
 .end
 
-    ; Uninitialised data tables which we allocate at assembly time but which don't
-    ; need to be saved as part of the binary.
-    align &100
+; Uninitialised data tables which we allocate at assembly time but which don't
+; need to be saved as part of the binary.
+align &100
 .count_table
     skip max_led_count
 
-    align &100
+align &100
 .period_table
     skip max_led_count
 
-    align &100
+align &100
 .state_table
     skip max_led_count
 
-    align &100
+align &100
 .inverse_row_table
     skip max_led_count
 
-    align &100
+align &100
 .address_low_table
     skip max_led_count
 
-    align &100
+align &100
 .address_high_table
     skip max_led_count
 
-    puttext "boot.txt", "!BOOT", 0
-    save "BLINKEN", start, end
+puttext "boot.txt", "!BOOT", 0
+save "BLINKEN", start, end
 
 ; TODO: Do some basic statistical analysis on the LED periods to check they look sane for a few combinations of parameters
