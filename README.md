@@ -4,7 +4,7 @@ A novelty flashing display of virtual LEDs for the Acorn BBC B, B+ and Master co
 
 ## Links and credits
 
-The stardot thread at TODO contains a pre-built version of this code, if you don't want to assemble it yourself. There's also a link you can use to run the code directly in your web browser using the jsbeeb emulator.
+The stardot thread at https://stardot.org.uk/forums/viewtopic.php?f=2&t=21320 contains a pre-built version of this code, if you don't want to assemble it yourself. There's also a link you can use to run the code directly in your web browser using the jsbeeb emulator.
 
 The basic idea - a panel of flashing LEDs which flash at approximately the same rate but which are not synchronised with each other - was inspired by Big Clive's "Gallium" PCB, as seen here: https://www.youtube.com/watch?v=H1k7mxhWQ5Q
 
