@@ -145,5 +145,3 @@ align &100
 
 puttext "boot.txt", "!BOOT", 0
 save "BLINKEN", start, end
-
-; TODO: Do some basic statistical analysis on the LED periods to check they look sane for a few combinations of parameters
