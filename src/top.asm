@@ -94,7 +94,6 @@ guard mode_4_screen
 include "animate.asm"
 include "menu.asm"
 include "utilities.asm"
-; TODO: Probably want to create some more templates - in particular, a smaller rectangle which doesn't struggle so much to hit 50Hz most of the time. - also/instead a "stippled" full-screen rectangle (50% grey dither) - and a tiled-triangle effect
 include "../tmp/panel-templates.asm"
 include "../tmp/led-shapes.asm"
 
