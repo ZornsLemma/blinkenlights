@@ -41,6 +41,8 @@ clear shared_zp_start, shared_zp_end
 org animate_start
 guard mode_4_screen
 
+irq_tmp_a = &fc
+
 irq1v = &204
 
 ula_palette = &fe21
@@ -412,7 +414,7 @@ endif
 ; line it's 0.
 .irq_handler
 {
-    lda &fc:pha ; TODO: MAGIC CONSTANT
+    lda irq_tmp_a:pha
     lda system_via_interrupt_flag_register:and #&02:beq try_timer1
     \ Handle VSYNC interrupt.
     lda #lo(vsync_to_visible_start_us):sta user_via_timer_1_low_order_latch
@@ -420,7 +422,7 @@ endif
     lda system_via_register_a \ clear the VSYNC interrupt
     lda #255:sta inverse_raster_row
 .do_rti
-    pla:sta &fc:rti
+    pla:sta irq_tmp_a:rti
 
 .try_timer1
     bit user_via_interrupt_flag_register:bvc do_rti
@@ -431,7 +433,7 @@ if show_rows
     \lda inverse_raster_row:and #1:clc:adc #1:eor #7:set_background_a
     lda inverse_raster_row:and #3:eor #7:set_background_a
 endif
-    pla:sta &fc:rti
+    pla:sta irq_tmp_a:rti
 
 .start_of_visible_region
     lda #lo(row_us):sta user_via_timer_1_low_order_latch
@@ -440,7 +442,7 @@ endif
 if show_rows
     lda #colour_blue eor 7:set_background_a
 endif
-    pla:sta &fc:rti
+    pla:sta irq_tmp_a:rti
 
 .end_of_visible_region
     lda #&ff:sta user_via_timer_1_low_order_latch:sta user_via_timer_1_high_order_counter
@@ -451,9 +453,9 @@ endif
 if show_missed_vsync_1
     lda #colour_black eor 7:set_background_a
 endif
-    pla:sta &fc:rti \ jmp return_to_os
+    pla:sta irq_tmp_a:rti \ jmp return_to_os
 .return_to_os_hack
-    pla:sta &fc:rti
+    pla:sta irq_tmp_a:rti
 }
 
 .compile_led_shape
@@ -598,5 +600,3 @@ endif
 } ; close file scope
 
 \ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
-
-; TODO: My indentation is all over the place in all files
