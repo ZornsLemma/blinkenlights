@@ -41,9 +41,9 @@ c = 1
 .*urandom8
 {
     ; Note that advance_seed_randomise_a corrupts rng_tmp.
-    upper_threshold = rng_tmp + 1
-    divisor = rng_tmp + 2
-    dividend = rng_tmp + 3
+    upper_threshold = rng_tmp+1
+    divisor = rng_tmp+2
+    dividend = rng_tmp+3
 
     sta divisor
 

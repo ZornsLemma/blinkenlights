@@ -98,7 +98,7 @@ clear shared_zp_start, shared_zp_end
 ; aren't the same first and show a message instead if they are.
 .pre_start_animation
 {
-    mode_7_screen_copy = mode_7_screen - &400
+    mode_7_screen_copy = mode_7_screen-&400
     graphics = mode_7_graphics_colour_base+colour_red
     text = mode_7_text_colour_base+colour_white
     start_y = 10
@@ -304,8 +304,7 @@ clear shared_zp_start, shared_zp_end
     ldy #0
 .loop
     lda frequency_text,x
-    ; TODO: NOT JUST HERE, SOMETIMES I USE THIS VERY SPACEY ARITHMETIC STYLE, SOMETIMES I USE A MORE COMPACT ONE - STANDARDISE (PROB ON MORE COMPACT)
-    sta mode_7_screen + (led_frequency_y * mode_7_width) + led_frequency_x,y
+    sta mode_7_screen + (led_frequency_y*mode_7_width) + led_frequency_x,y
     inx
     iny:cpy #3:bne loop
     rts
@@ -320,7 +319,7 @@ clear shared_zp_start, shared_zp_end
     ldy #0
 .loop
     lda spread_text,x
-    sta mode_7_screen + (led_spread_y * mode_7_width) + led_spread_x,y
+    sta mode_7_screen + (led_spread_y*mode_7_width) + led_spread_x,y
     inx
     iny:cpy #2:bne loop
     rts
@@ -336,7 +335,7 @@ clear shared_zp_start, shared_zp_end
     ldy #0
 .loop
     lda text_uniformly,x
-    sta mode_7_screen + (led_distribution_y * mode_7_width) + led_distribution_x,y
+    sta mode_7_screen + (led_distribution_y*mode_7_width) + led_distribution_x,y
     inx
     iny:cpy #text_binomially-text_uniformly:bne loop
     rts
@@ -358,9 +357,9 @@ clear shared_zp_start, shared_zp_end
     sixel_inverse_row = zp_tmp + 2
     x_group_count = zp_tmp + 3
 
-    mode_7_screen_copy = mode_7_screen - &400
+    mode_7_screen_copy = mode_7_screen-&400
     offset = panel_template_top_left_y*mode_7_width
-    screen_address_top_left = mode_7_screen_copy + panel_template_top_left_x
+    screen_address_top_left = mode_7_screen_copy+panel_template_top_left_x
 
     sixel_width = 2
     sixel_height = 3

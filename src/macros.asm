@@ -22,9 +22,9 @@ endmacro
 macro equ_hex_digit n
     assert n <= &f
     if n <= &9
-        equb '0' + n
+        equb '0'+n
     else
-        equb 'A' + (n - 10)
+        equb 'A'+(n-10)
     endif
 endmacro
 

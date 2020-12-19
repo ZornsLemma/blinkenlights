@@ -430,7 +430,6 @@ endif
     lda user_via_timer_1_low_order_latch \ clear timer 1 interrupt flag
     dec inverse_raster_row:bmi start_of_visible_region:beq end_of_visible_region
 if show_rows
-    \lda inverse_raster_row:and #1:clc:adc #1:eor #7:set_background_a
     lda inverse_raster_row:and #3:eor #7:set_background_a
 endif
     pla:sta irq_tmp_a:rti
@@ -600,4 +599,4 @@ endif
 
 } ; close file scope
 
-\ TODO: Triangular LEDs are a bit unsatisfactory in both big and small forms
+; TODO: STANDARDISE ON ; NOT \ FOR COMMENTS
