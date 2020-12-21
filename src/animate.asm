@@ -118,7 +118,7 @@ macro advance_to_next_led
     beq advance_to_next_led_group ; always branch
 endmacro
 
-.*start_animation
+.start_animation_internal
 {
     ; Select mode 4 and set the foreground and background colours.
     lda #4:jsr set_mode
@@ -277,7 +277,8 @@ endmacro
     lda #&7f
     sta system_via_interrupt_enable_register
     sta user_via_interrupt_enable_register
-    lda #&82:sta system_via_interrupt_enable_register ; enable VSYNC interrupt
+    ; Enable VSYNC and keyboard interrupts.
+    lda #&83:sta system_via_interrupt_enable_register
     lda #&c0:sta user_via_interrupt_enable_register ; enable timer 1 interrupt
     ; Set timer 1 to continuous interrupts mode.
     lda #&40:sta user_via_auxiliary_control_register
@@ -402,8 +403,8 @@ endif
     inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
     jmp led_loop
-.forever_loop_indirect
-    jmp forever_loop
+.^forever_loop_indirect ; TODO: RENAME jmp_forever_loop_or_rts?
+    jmp forever_loop ; patched
 }
 
 ; inverse_raster_row is used to track where we are on the screen, in terms of
@@ -425,7 +426,7 @@ endif
     pla:sta irq_tmp_a:rti
 
 .try_timer1
-    bit user_via_interrupt_flag_register:bvc do_rti
+    bit user_via_interrupt_flag_register:bvc try_keyboard
     ; Handle timer 1 interrupt.
     lda user_via_timer_1_low_order_latch ; clear timer 1 interrupt flag
     dec inverse_raster_row:bmi start_of_visible_region:beq end_of_visible_region
@@ -433,6 +434,12 @@ if show_rows
     lda inverse_raster_row:and #3:eor #7:set_background_a
 endif
     pla:sta irq_tmp_a:rti
+
+.try_keyboard
+    inc &5800 ; TODO!
+    ; TODO: We should check for SPACE specifically, but let's try this for now.
+    lda #opcode_rts:sta forever_loop_indirect
+    jmp do_rti
 
 .start_of_visible_region
     lda #lo(row_us):sta user_via_timer_1_low_order_latch
@@ -596,5 +603,29 @@ endif
     dec dest
     rts
 }
+
+.*start_animation
+{
+    lda irq1v:sta old_irq1v
+    lda irq1v+1:sta old_irq1v+1
+    jsr start_animation_internal
+    ; The interrupt handler will force an rts from start_animation_internal if
+    ; SPACE is pressed by patching forever_loop_indirect. Revert that ready for
+    ; next time.
+    lda #opcode_jmp:sta forever_loop_indirect
+    sei
+    lda old_irq1v:sta irq1v
+    lda old_irq1v+1:sta irq1v+1
+    cli
+    ;TODO ; TODO: WE NEED TO RESET VIAS TO STANDARD SETTINGS
+    ; We discard the stacked return address and re-enter the code at "start"
+    ; instead of using rts; this will take care of switching back to mode 7 and
+    ; re-displaying the menu.
+    pla:pla
+    jmp start
+}
+
+.old_irq1v
+    equw 0
 
 } ; close file scope

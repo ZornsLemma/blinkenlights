@@ -52,6 +52,7 @@ osword = &fff1
 osbyte = &fff4
 oscli  = &fff7
 
+opcode_jmp = &4c
 opcode_rts = &60
 opcode_jmp_indirect = &6c
 opcode_dey = &88
