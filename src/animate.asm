@@ -606,9 +606,13 @@ endif
 
 .*start_animation
 {
+    ; TODO: This is done here at the moment to avoid upsetting the branch alignment in the
+    ; main loop. It's inconsistent to do some of it here and some just before entering
+    ; forever loop. I think. Come back to this.
     lda irq1v:sta old_irq1v
     lda irq1v+1:sta old_irq1v+1
     lda system_via_interrupt_enable_register:sta old_system_via_interrupt_enable_register
+    lda system_via_register_a
     jsr start_animation_internal
     ; The interrupt handler will force an rts from start_animation_internal if
     ; TODO:SPACE is pressed by patching forever_loop_indirect. Revert that ready for
