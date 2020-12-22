@@ -608,24 +608,32 @@ endif
 {
     lda irq1v:sta old_irq1v
     lda irq1v+1:sta old_irq1v+1
+    lda system_via_interrupt_enable_register:sta old_system_via_interrupt_enable_register
     jsr start_animation_internal
     ; The interrupt handler will force an rts from start_animation_internal if
-    ; SPACE is pressed by patching forever_loop_indirect. Revert that ready for
+    ; TODO:SPACE is pressed by patching forever_loop_indirect. Revert that ready for
     ; next time.
     lda #opcode_jmp:sta forever_loop_indirect
     sei
     lda old_irq1v:sta irq1v
     lda old_irq1v+1:sta irq1v+1
+    lda #&7f:sta system_via_interrupt_enable_register
+    lda old_system_via_interrupt_enable_register
+    sta system_via_interrupt_enable_register
+    lda #&7f:sta user_via_interrupt_enable_register
     cli
+    ; TODO: I wonder if the problem I'm having is that the OS (having been out of the loop) still thinks SPACE is down when we re-enable its interrupt handler - this probably isn't the case though
     ;TODO ; TODO: WE NEED TO RESET VIAS TO STANDARD SETTINGS
     ; We discard the stacked return address and re-enter the code at "start"
     ; instead of using rts; this will take care of switching back to mode 7 and
-    ; re-displaying the menu.
+    ; re-displaying the menu. TODO: Maybe use rts here, and have menu.asm do this bit
     pla:pla
     jmp start
 }
 
 .old_irq1v
     equw 0
+.old_system_via_interrupt_enable_register
+    equb 0
 
 } ; close file scope
