@@ -105,11 +105,11 @@ clear shared_zp_start, shared_zp_end
     offset = start_y*mode_7_width
     lda option_led_colour:cmp option_panel_colour:beq same_colours
     jsr start_animation
-    ; TODO COMMENT - ACTUALLY WE SHOULD REALLY BE WAITING FOR "NO KEY" HERE, UNLESS WE DO ONLY STOP THE ANIMATION ON SPACE (OTHERWISE EG STOPPING ANIM VIA "1" DOES CHANGE THE COLOUR WHEN WE RETURN TO THE MENU)
-.wait_for_no_space_SFTODO
-    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
-    inx:beq wait_for_no_space_SFTODO ; TODO MAKE A SUBROUTINE IF DO HAVE IT TWICE
-    ; TODO COMMENT
+    ; Wait for the SPACE press which terminated the animation to be released.
+    jsr wait_for_no_space
+    ; Rather than returning to input_loop via rts, we discard the stacked return
+    ; address and jump to start; this takes care of re-selecting mode 7 and
+    ; re-displaying the menu.
     pla:pla
     jmp start
 .same_colours
@@ -145,9 +145,7 @@ clear shared_zp_start, shared_zp_end
     ; Now wait for the user to release SPACE (the press which tried to start the
     ; animation) and press it again to dismiss the message. (input_loop will
     ; wait until the press of SPACE to dismiss the message is released.)
-.wait_for_no_space
-    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
-    inx:beq wait_for_no_space
+    jsr wait_for_no_space
 .wait_for_space
     lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
     inx:bne wait_for_space
@@ -156,6 +154,10 @@ clear shared_zp_start, shared_zp_end
 .restore_loop
     lda mode_7_screen_copy,x:sta mode_7_screen+offset,x
     dex:bne restore_loop
+    rts
+.wait_for_no_space
+    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
+    inx:beq wait_for_no_space
     rts
 }
 

@@ -47,9 +47,13 @@ irq1v = &204
 
 ula_palette = &fe21
 
+system_via_register_b = &fe40
+system_via_data_direction_register_b = &fe42
+system_via_data_direction_register_a = &fe43
 system_via_register_a = &fe41
 system_via_interrupt_flag_register = &fe4d
 system_via_interrupt_enable_register = &fe4e
+system_via_register_a_no_handshake = &fe4f
 
 user_via_timer_1_low_order_latch = &fe64
 user_via_timer_1_high_order_counter = &fe65
@@ -118,7 +122,7 @@ macro advance_to_next_led
     beq advance_to_next_led_group ; always branch
 endmacro
 
-.forever_loop
+.animation_loop
 {
     ; Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2:sta sta_count_x_3+2
@@ -232,10 +236,10 @@ endif
     inc lda_address_low_x+2
     inc lda_address_high_x+2
     inc lda_inverse_row_x+2
-    dec led_group_count:beq forever_loop_indirect
+    dec led_group_count:beq jmp_animation_loop_or_rts
     jmp led_loop
-.^forever_loop_indirect ; TODO: RENAME jmp_forever_loop_or_rts?
-    jmp forever_loop ; patched
+.^jmp_animation_loop_or_rts
+    jmp animation_loop ; patched
 }
 
 ; inverse_raster_row is used to track where we are on the screen, in terms of
@@ -257,18 +261,16 @@ endif
     pla:sta irq_tmp_a:rti
 
 .try_keyboard
-    inc &5800 ; TODO!
-    ; TODO: We should check for SPACE specifically, but let's try this for now.
-    ; Set keyboard up for direct reads; see http://www.retrosoftware.co.uk/wiki/index.php?title=Reading_the_keyboard_by_direct_hardware_access. TODO MAGIC NUMBERS
-    lda #&7f:sta &fe43
-    lda #&f:sta &fe42
-    lda #&3:sta &fe40
-    lda #not(keyboard_space):sta &fe4f:lda &fe4f ; TODO MAGIC
+    ; Set keyboard up for direct reads; see http://www.retrosoftware.co.uk/wiki/index.php?title=Reading_the_keyboard_by_direct_hardware_access.
+    lda #&7f:sta system_via_data_direction_register_a
+    lda #&f:sta system_via_data_direction_register_b
+    lda #&3:sta system_via_register_b
+    lda #not(keyboard_space):sta system_via_register_a_no_handshake:lda system_via_register_a_no_handshake
     bpl not_space
-    lda #opcode_rts:sta forever_loop_indirect
+    lda #opcode_rts:sta jmp_animation_loop_or_rts
 .not_space
     ; Re-enable keyboard interrupt mode; see https://stardot.org.uk/forums/viewtopic.php?f=54&t=17194&p=238104.
-    lda #&b:sta &fe40
+    lda #&b:sta system_via_register_b
     jmp do_rti
 
 .try_timer1
@@ -444,13 +446,19 @@ endif
     rts
 }
 
+; The following code is placed after amimation_loop to minimise the amount of
+; code which can upset branch alignment when modified.
+
 .*start_animation
 {
     jsr start_animation_internal
-    ; The interrupt handler will force an rts from start_animation_internal if
-    ; TODO:SPACE is pressed by patching forever_loop_indirect. Revert that ready for
-    ; next time.
-    lda #opcode_jmp:sta forever_loop_indirect
+
+    ; We will return here if the keyboard interrupt handler forces an rts from
+    ; start_animation_internal by patching jmp_animation_loop_or_rts. Revert
+    ; that ready for next time.
+    lda #opcode_jmp:sta jmp_animation_loop_or_rts
+
+    ; Restore the interrupt handler and VIA configuration so the OS works.
     sei
     lda old_irq1v:sta irq1v
     lda old_irq1v+1:sta irq1v+1
@@ -459,7 +467,7 @@ endif
     sta system_via_interrupt_enable_register
     lda #&7f:sta user_via_interrupt_enable_register
     cli
-    ; TODO: I wonder if the problem I'm having is that the OS (having been out of the loop) still thinks SPACE is down when we re-enable its interrupt handler - this probably isn't the case though
+
     rts
 }
 
@@ -637,7 +645,7 @@ endif
     cli
 
     ; Enter the main animation loop.
-    jmp forever_loop
+    jmp animation_loop
 }
 
 .old_irq1v
