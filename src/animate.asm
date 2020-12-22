@@ -118,177 +118,8 @@ macro advance_to_next_led
     beq advance_to_next_led_group ; always branch
 endmacro
 
-.start_animation_internal
-{
-    ; Select mode 4 and set the foreground and background colours.
-    lda #4:jsr set_mode
-    ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
-    ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
-
-    ; Set all the LEDs to be off and just about to turn on, so they start in sync.
-    assert max_led_count == 5*256
-    ldx #0
-.init_state_loop
-    lda #0
-    sta state_table     ,x
-    sta state_table+&100,x
-    sta state_table+&200,x
-    sta state_table+&300,x
-    sta state_table+&400,x
-    lda #1
-    sta count_table     ,x
-    sta count_table+&100,x
-    sta count_table+&200,x
-    sta count_table+&300,x
-    sta count_table+&400,x
-    dex:bne init_state_loop
-
-    ; Compile code to poke the selected LED bitmap into screen RAM.
-    lda option_led_shape:asl a:clc:adc option_led_size:asl a
-    tay:ldx led_shape_list,y
-    lda led_shape_list+1,y:tay
-    jsr compile_led_shape
-
-    ; Set up the LEDs based on the panel template.
-    {
-        jsr get_panel_template_address
-        stx src:sty src+1
-
-        ; The first two bytes of the template are the number of LEDs; we need to set up
-        ; the per-frame initialisation accordingly, and if we don't have an exact
-        ; multiple of 256 LEDs we need to take that into account by starting with X>0.
-        ldy #1:lda (src),y:sta lda_imm_led_groups+1
-        dey:lda (src),y:beq exact_multiple
-        inc lda_imm_led_groups+1
-        lda #0:sec:sbc (src),y
-    .exact_multiple
-        sta lda_imm_initial_x+1:sta working_index
-        clc:lda src:adc #2:sta src
-        inc_word_high src+1
-
-        lda #hi(inverse_row_table):sta sta_inverse_row_table_x+2
-        lda #hi(address_low_table):sta sta_address_low_table_x+2
-        lda #hi(address_high_table):sta sta_address_high_table_x+2
-
-        lda #0:sta led_x:sta led_y
-        ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
-        ; cell; for small LEDs, "Y=0" is scanline 2.
-        lda option_led_size:clc:adc #1
-        sta dest
-        lda #&58:sta dest+1
-    .outer_loop
-        ldy #0:lda (src),y
-        ; A contains a bitmap representing potential LED positions from led_x to
-        ; led_x+7 in row led_y.
-        ldx #8
-    .group_of_8_loop
-        asl a
-        pha
-        bcc empty
-        ldy working_index
-        lda #mode_4_height:sec:sbc led_y
-    .sta_inverse_row_table_x
-        sta &ff00,y ; patched
-        lda dest
-    .sta_address_low_table_x
-        sta &ff00,y ; patched
-        lda dest+1
-    .sta_address_high_table_x
-        sta &ff00,y ; patched
-        inc working_index
-        bne not_next_led_group
-        inc sta_inverse_row_table_x+2
-        inc sta_address_low_table_x+2
-        inc sta_address_high_table_x+2
-    .not_next_led_group
-    .empty
-        lda dest:clc:adc #mode_4_char_lines:sta dest
-        inc_word_high dest+1
-        inc led_x
-        pla
-        dex:bne group_of_8_loop
-        inc_word src
-        lda led_x:cmp #mode_4_width:bne outer_loop
-        lda #0:sta led_x
-        inc led_y
-        lda led_y:cmp #mode_4_height:bne outer_loop
-    }
-
-    ; Initialise the LED periods using randomly generated values based on the
-    ; chosen parameters.
-    {
-        parameter_a = zp_tmp
-        parameter_b = zp_tmp+1
-        parameter_c = zp_tmp+2
-        period = zp_tmp+3
-
-        ; Set src=frequency_spread_parameters +
-        ;         4*((option_led_frequency * num_spreads) + option_led_spread).
-        ; We just do a naive multiplication by addition here, it's simple and
-        ; not performance-sensitive.
-        lda option_led_spread:sta src
-        lda #0:sta src+1
-        ldx option_led_frequency:beq multiply_done
-    .multiply_loop
-        clc:lda src:adc #num_spreads:sta src
-        inc_word_high src+1
-        dex:bne multiply_loop
-    .multiply_done
-        asl src:asl src+1
-        asl src:asl src+1
-        clc:lda src:adc #lo(frequency_spread_parameters):sta src
-        lda src+1:adc #hi(frequency_spread_parameters):sta src+1
-
-        ; Set the runtime ticks-per-frame.
-        ldy #0:lda (src),y
-        sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
-
-        ; Generate the random LED periods.
-        iny:lda (src),y:sta parameter_a
-        iny:lda (src),y:sta parameter_b
-        iny:lda (src),y:sta parameter_c
-        lda option_led_distribution:bne binomially_distributed
-        clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
-        lda #0:sta parameter_c
-    .binomially_distributed
-        lda lda_imm_led_groups+1:sta led_group_count
-        lda lda_imm_initial_x+1:sta working_index
-        lda #hi(period_table):sta sta_period_table_x+2
-    .generate_random_led_loop
-        lda parameter_a:sta period
-        lda parameter_b:jsr urandom8:clc:adc period:sta period
-        lda parameter_c:beq no_parameter_c
-        jsr urandom8:clc:adc period:sta period
-    .no_parameter_c
-        ldx working_index
-        lda period
-    .sta_period_table_x
-        sta &ff00,x ; patched
-        inc working_index:bne generate_random_led_loop
-        inc sta_period_table_x+2
-        dec led_group_count:bne generate_random_led_loop
-    }
-
-    ; Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
-
-    sei
-    ; We're going to shut the OS out of the loop to make things more stable, so
-    ; disable all interrupts then re-enable the ones we're interested in.
-    lda #&7f
-    sta system_via_interrupt_enable_register
-    sta user_via_interrupt_enable_register
-    ; Enable VSYNC and keyboard interrupts.
-    lda #&83:sta system_via_interrupt_enable_register
-    lda #&c0:sta user_via_interrupt_enable_register ; enable timer 1 interrupt
-    ; Set timer 1 to continuous interrupts mode.
-    lda #&40:sta user_via_auxiliary_control_register
-    lda #lo(irq_handler):sta irq1v
-    lda #hi(irq_handler):sta irq1v+1
-    lda #0:sta frame_count
-    cli
-
 .forever_loop
-
+{
     ; Initialise all the addresses in the self-modifying code.
     lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_2+2:sta sta_count_x_3+2
     lda #hi(period_table):sta adc_period_x+2
@@ -298,10 +129,10 @@ endmacro
     lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     ; Reset X and led_group_count.
-.lda_imm_led_groups
+.^lda_imm_led_groups
     lda #&ff ; patched
     sta led_group_count
-.lda_imm_initial_x
+.^lda_imm_initial_x
     ldx #0 ; patched
 
     ; The idea here is that if we took less than 1/50th second to process the
@@ -335,14 +166,14 @@ endif
     ; checking the count before we subtract ticks_per_frame, we can use the full
     ; 8-bit unsigned range of the count.
     bmi_npc not_going_to_toggle
-.sbc_imm_ticks_per_frame_1
+.^sbc_imm_ticks_per_frame_1
     sbc #&ff ; patched
     bmi_npc toggle_led
 .sta_count_x_1
     sta &ff00,x ; patched
     advance_to_next_led
 .not_going_to_toggle
-.sbc_imm_ticks_per_frame_2
+.^sbc_imm_ticks_per_frame_2
     sbc #&ff ; patched
 .sta_count_x_2
     sta &ff00,x ; patched
@@ -425,6 +256,21 @@ endif
 .do_rti
     pla:sta irq_tmp_a:rti
 
+.try_keyboard
+    inc &5800 ; TODO!
+    ; TODO: We should check for SPACE specifically, but let's try this for now.
+    ; Set keyboard up for direct reads; see http://www.retrosoftware.co.uk/wiki/index.php?title=Reading_the_keyboard_by_direct_hardware_access. TODO MAGIC NUMBERS
+    lda #&7f:sta &fe43
+    lda #&f:sta &fe42
+    lda #&3:sta &fe40
+    lda #not(keyboard_space):sta &fe4f:lda &fe4f ; TODO MAGIC
+    bpl not_space
+    lda #opcode_rts:sta forever_loop_indirect
+.not_space
+    ; Re-enable keyboard interrupt mode; see https://stardot.org.uk/forums/viewtopic.php?f=54&t=17194&p=238104.
+    lda #&b:sta &fe40
+    jmp do_rti
+
 .try_timer1
     bit user_via_interrupt_flag_register:bvc try_keyboard
     ; Handle timer 1 interrupt.
@@ -434,12 +280,6 @@ if show_rows
     lda inverse_raster_row:and #3:eor #7:set_background_a
 endif
     pla:sta irq_tmp_a:rti
-
-.try_keyboard
-    inc &5800 ; TODO!
-    ; TODO: We should check for SPACE specifically, but let's try this for now.
-    lda #opcode_rts:sta forever_loop_indirect
-    jmp do_rti
 
 .start_of_visible_region
     lda #lo(row_us):sta user_via_timer_1_low_order_latch
@@ -606,13 +446,6 @@ endif
 
 .*start_animation
 {
-    ; TODO: This is done here at the moment to avoid upsetting the branch alignment in the
-    ; main loop. It's inconsistent to do some of it here and some just before entering
-    ; forever loop. I think. Come back to this.
-    lda irq1v:sta old_irq1v
-    lda irq1v+1:sta old_irq1v+1
-    lda system_via_interrupt_enable_register:sta old_system_via_interrupt_enable_register
-    lda system_via_register_a ; clear keyboard interrupt flag
     jsr start_animation_internal
     ; The interrupt handler will force an rts from start_animation_internal if
     ; TODO:SPACE is pressed by patching forever_loop_indirect. Revert that ready for
@@ -628,6 +461,183 @@ endif
     cli
     ; TODO: I wonder if the problem I'm having is that the OS (having been out of the loop) still thinks SPACE is down when we re-enable its interrupt handler - this probably isn't the case though
     rts
+}
+
+.start_animation_internal
+{
+    ; Select mode 4 and set the foreground and background colours.
+    lda #4:jsr set_mode
+    ldx #0:ldy option_panel_colour:jsr set_palette_x_to_y
+    ldx #1:ldy option_led_colour:jsr set_palette_x_to_y
+
+    ; Set all the LEDs to be off and just about to turn on, so they start in sync.
+    assert max_led_count == 5*256
+    ldx #0
+.init_state_loop
+    lda #0
+    sta state_table     ,x
+    sta state_table+&100,x
+    sta state_table+&200,x
+    sta state_table+&300,x
+    sta state_table+&400,x
+    lda #1
+    sta count_table     ,x
+    sta count_table+&100,x
+    sta count_table+&200,x
+    sta count_table+&300,x
+    sta count_table+&400,x
+    dex:bne init_state_loop
+
+    ; Compile code to poke the selected LED bitmap into screen RAM.
+    lda option_led_shape:asl a:clc:adc option_led_size:asl a
+    tay:ldx led_shape_list,y
+    lda led_shape_list+1,y:tay
+    jsr compile_led_shape
+
+    ; Set up the LEDs based on the panel template.
+    {
+        jsr get_panel_template_address
+        stx src:sty src+1
+
+        ; The first two bytes of the template are the number of LEDs; we need to set up
+        ; the per-frame initialisation accordingly, and if we don't have an exact
+        ; multiple of 256 LEDs we need to take that into account by starting with X>0.
+        ldy #1:lda (src),y:sta lda_imm_led_groups+1
+        dey:lda (src),y:beq exact_multiple
+        inc lda_imm_led_groups+1
+        lda #0:sec:sbc (src),y
+    .exact_multiple
+        sta lda_imm_initial_x+1:sta working_index
+        clc:lda src:adc #2:sta src
+        inc_word_high src+1
+
+        lda #hi(inverse_row_table):sta sta_inverse_row_table_x+2
+        lda #hi(address_low_table):sta sta_address_low_table_x+2
+        lda #hi(address_high_table):sta sta_address_high_table_x+2
+
+        lda #0:sta led_x:sta led_y
+        ; If we have large LEDs, "Y=0" is actually scanline 1 within the character
+        ; cell; for small LEDs, "Y=0" is scanline 2.
+        lda option_led_size:clc:adc #1
+        sta dest
+        lda #&58:sta dest+1
+    .outer_loop
+        ldy #0:lda (src),y
+        ; A contains a bitmap representing potential LED positions from led_x to
+        ; led_x+7 in row led_y.
+        ldx #8
+    .group_of_8_loop
+        asl a
+        pha
+        bcc empty
+        ldy working_index
+        lda #mode_4_height:sec:sbc led_y
+    .sta_inverse_row_table_x
+        sta &ff00,y ; patched
+        lda dest
+    .sta_address_low_table_x
+        sta &ff00,y ; patched
+        lda dest+1
+    .sta_address_high_table_x
+        sta &ff00,y ; patched
+        inc working_index
+        bne not_next_led_group
+        inc sta_inverse_row_table_x+2
+        inc sta_address_low_table_x+2
+        inc sta_address_high_table_x+2
+    .not_next_led_group
+    .empty
+        lda dest:clc:adc #mode_4_char_lines:sta dest
+        inc_word_high dest+1
+        inc led_x
+        pla
+        dex:bne group_of_8_loop
+        inc_word src
+        lda led_x:cmp #mode_4_width:bne outer_loop
+        lda #0:sta led_x
+        inc led_y
+        lda led_y:cmp #mode_4_height:bne outer_loop
+    }
+
+    ; Initialise the LED periods using randomly generated values based on the
+    ; chosen parameters.
+    {
+        parameter_a = zp_tmp
+        parameter_b = zp_tmp+1
+        parameter_c = zp_tmp+2
+        period = zp_tmp+3
+
+        ; Set src=frequency_spread_parameters +
+        ;         4*((option_led_frequency * num_spreads) + option_led_spread).
+        ; We just do a naive multiplication by addition here, it's simple and
+        ; not performance-sensitive.
+        lda option_led_spread:sta src
+        lda #0:sta src+1
+        ldx option_led_frequency:beq multiply_done
+    .multiply_loop
+        clc:lda src:adc #num_spreads:sta src
+        inc_word_high src+1
+        dex:bne multiply_loop
+    .multiply_done
+        asl src:asl src+1
+        asl src:asl src+1
+        clc:lda src:adc #lo(frequency_spread_parameters):sta src
+        lda src+1:adc #hi(frequency_spread_parameters):sta src+1
+
+        ; Set the runtime ticks-per-frame.
+        ldy #0:lda (src),y
+        sta sbc_imm_ticks_per_frame_1+1:sta sbc_imm_ticks_per_frame_2+1
+
+        ; Generate the random LED periods.
+        iny:lda (src),y:sta parameter_a
+        iny:lda (src),y:sta parameter_b
+        iny:lda (src),y:sta parameter_c
+        lda option_led_distribution:bne binomially_distributed
+        clc:lda parameter_b:adc parameter_c:sta parameter_b:dec parameter_b
+        lda #0:sta parameter_c
+    .binomially_distributed
+        lda lda_imm_led_groups+1:sta led_group_count
+        lda lda_imm_initial_x+1:sta working_index
+        lda #hi(period_table):sta sta_period_table_x+2
+    .generate_random_led_loop
+        lda parameter_a:sta period
+        lda parameter_b:jsr urandom8:clc:adc period:sta period
+        lda parameter_c:beq no_parameter_c
+        jsr urandom8:clc:adc period:sta period
+    .no_parameter_c
+        ldx working_index
+        lda period
+    .sta_period_table_x
+        sta &ff00,x ; patched
+        inc working_index:bne generate_random_led_loop
+        inc sta_period_table_x+2
+        dec led_group_count:bne generate_random_led_loop
+    }
+
+    ; Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
+
+    sei
+    lda irq1v:sta old_irq1v
+    lda irq1v+1:sta old_irq1v+1
+    lda system_via_interrupt_enable_register:sta old_system_via_interrupt_enable_register
+    lda system_via_register_a ; clear keyboard interrupt flag
+    ; We're going to shut the OS out of the loop to make things more stable, so
+    ; disable all interrupts then re-enable the ones we're interested in.
+    lda #&7f
+    sta system_via_interrupt_enable_register
+    sta user_via_interrupt_enable_register
+    ; Enable VSYNC and keyboard interrupts.
+    lda #&83:sta system_via_interrupt_enable_register
+    lda #&c0:sta user_via_interrupt_enable_register ; enable timer 1 interrupt
+    ; Set timer 1 to continuous interrupts mode.
+    lda #&40:sta user_via_auxiliary_control_register
+    lda #lo(irq_handler):sta irq1v
+    lda #hi(irq_handler):sta irq1v+1
+    lda #0:sta frame_count
+    cli
+
+    ; Enter the main animation loop.
+    jmp forever_loop
 }
 
 .old_irq1v
