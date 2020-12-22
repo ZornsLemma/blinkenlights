@@ -612,7 +612,7 @@ endif
     lda irq1v:sta old_irq1v
     lda irq1v+1:sta old_irq1v+1
     lda system_via_interrupt_enable_register:sta old_system_via_interrupt_enable_register
-    lda system_via_register_a
+    lda system_via_register_a ; clear keyboard interrupt flag
     jsr start_animation_internal
     ; The interrupt handler will force an rts from start_animation_internal if
     ; TODO:SPACE is pressed by patching forever_loop_indirect. Revert that ready for
