@@ -627,12 +627,7 @@ endif
     lda #&7f:sta user_via_interrupt_enable_register
     cli
     ; TODO: I wonder if the problem I'm having is that the OS (having been out of the loop) still thinks SPACE is down when we re-enable its interrupt handler - this probably isn't the case though
-    ;TODO ; TODO: WE NEED TO RESET VIAS TO STANDARD SETTINGS
-    ; We discard the stacked return address and re-enter the code at "start"
-    ; instead of using rts; this will take care of switching back to mode 7 and
-    ; re-displaying the menu. TODO: Maybe use rts here, and have menu.asm do this bit
-    pla:pla
-    jmp start
+    rts
 }
 
 .old_irq1v

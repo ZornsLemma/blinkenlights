@@ -104,7 +104,14 @@ clear shared_zp_start, shared_zp_end
     start_y = 10
     offset = start_y*mode_7_width
     lda option_led_colour:cmp option_panel_colour:beq same_colours
-    jmp start_animation
+    jsr start_animation
+    ; TODO COMMENT - ACTUALLY WE SHOULD REALLY BE WAITING FOR "NO KEY" HERE, UNLESS WE DO ONLY STOP THE ANIMATION ON SPACE (OTHERWISE EG STOPPING ANIM VIA "1" DOES CHANGE THE COLOUR WHEN WE RETURN TO THE MENU)
+.wait_for_no_space_SFTODO
+    lda #osbyte_read_key:ldx #lo(keyboard_space):ldy #hi(keyboard_space):jsr osbyte
+    inx:beq wait_for_no_space_SFTODO ; TODO MAKE A SUBROUTINE IF DO HAVE IT TWICE
+    ; TODO COMMENT
+    pla:pla
+    jmp start
 .same_colours
     ; In order to avoid ugly screen flickering, we save the part of the screen
     ; we're about to overwrite with the warning and restore it afterwards. (If
