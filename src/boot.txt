@@ -1,0 +1,4 @@
+*BASIC
+*DIR $
+*TV0,1
+*/BLINKEN

@@ -4,27 +4,29 @@
     equb 0
 .vsync_count
     equb 0
+.SFTODOTHING \ SFTODO: RENAME inverse_raster_row OR SIMILAR
+    equb 0
 .screen_ptr
     equw 0
+.tmp_y
+    equb 0
+
 
     org &2000
-    guard &5800
+    guard &7c00
 
-    led_count = 40*32
+    \ TODO: IS THE VSYNC-Y INTERRUPT STUFF USEFUL IN MODE 7? MAYBE, BUT THINK ABOUT IT.
+
+    led_count = 38*2*25*3
     ticks_per_frame = 8
-    show_missed_vsync = FALSE
-    big_leds = TRUE
-    if big_leds
-        led_start_line = 1
-        led_max_line = 5
-    else
-        led_start_line = 2
-        led_max_line = 3
-    endif
 
     sys_int_vsync = 2
     sys_via_ifr = &fe40+13
     irq1v = &204
+
+    user_via_auxiliary_control_register = &fe6b
+    user_via_interrupt_flag_register = &fe6d
+    user_via_interrupt_enable_register = &fe6e
 
 
 macro advance_to_next_led_fall_through
@@ -38,12 +40,20 @@ macro advance_to_next_led
 endmacro
 
 .start
-    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/vsync-example.asm
+    \ Interrupt code based on https://github.com/kieranhj/intro-to-interrupts/blob/master/source/screen-example.asm
+    scanline_to_interrupt_at = -2
+    vsync_position = 35
+    total_rows = 39
+    us_per_scanline = 64
+    us_per_row = 8*us_per_scanline
+    \ TODO: I should be able to just use timer1 now
+    timer2_value_in_us = (total_rows-vsync_position)*us_per_row - 2*us_per_scanline + scanline_to_interrupt_at*us_per_scanline
+    timer1_value_in_us = us_per_row - 2 \ us_per_row \ - 2*us_per_scanline
+
     sei
+    lda #&7f:sta &fe4e:sta user_via_interrupt_enable_register \ disable all interrupts
     lda #&82
     sta &fe4e
-    lda #&a0
-    sta &fe6e
     lda irq1v:sta jmp_old_irq_handler+1
     lda irq1v+1:sta jmp_old_irq_handler+2
     lda #lo(irq_handler):sta irq1v
@@ -57,132 +67,125 @@ endmacro
 .forever_loop
 
     \ Initialise all the addresses in the self-modifying code.
-    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2:sta sta_count_x_1b+2:sta sta_count_x_2+2
+    lda #hi(count_table):sta lda_count_x+2:sta sta_count_x_1+2
+if FALSE
+    sta sta_count_x_1b+2
+endif
+    sta sta_count_x_2+2
     lda #hi(period_table):sta adc_period_x+2
-    lda #hi(state_table):sta lda_state_x+2:sta sta_state_x+2
-    lda #hi(address_low_table):sta lda_address_low_x_1+2
-    lda #hi(address_high_table):sta lda_address_high_x_1+2
+    \lda #hi(inverse_row_table):sta lda_inverse_row_x+2
 
     \ Reset X and led_group_count.
     \ At the moment we have 5*256 LEDs; if we had a number which wasn't a multiple of
     \ 256 we'd need to start the first pass round the loop with X>0 so we end neatly
     \ on a multiple of 256.
-    lda #5:sta led_group_count \ TODO: SHOULD BE 5
+    lda #&16:sta led_group_count \ TODO: SHOULD BE 5
     ldx #0
+
+    lda #&02:sta screen_ptr:lda #&7c:sta screen_ptr+1
+    ldy #38*6
 
     \ The idea here is that if we took less than 1/50th second to process the last update we
     \ wait for VSYNC (well, more precisely, the start of the blank area at the bottom of the
     \ screen), but if we took longer we just keep going until we catch up.
     dec vsync_count
+    dec vsync_count
+    dec vsync_count
+    dec vsync_count
+    dec vsync_count
     bpl missed_vsync
 .vsync_wait_loop
     lda vsync_count
     bmi vsync_wait_loop
-if show_missed_vsync
-    jmp SFTODOHACK
-endif
 .missed_vsync
-if show_missed_vsync
-    lda #1 eor 7:sta &fe21
-.SFTODOHACK
-endif
+.SFTODO999
 
-    \ TIME: No-toggle time is: 7+2+2+3=14 cycles. That burns 15918 cycles for 1137 non-toggling LEDs, leaving 24082 cycles for toggling, giving an approx toggle budget of 168 cycles. This is borderline achievable (my cycle counts are a bit crude and slightly optimistic). No, this is overly simplistic, because occasionally LEDs with different periods will all end up toggling on the same frame.
+.led_loop_sec
+    sec
+    \ TIME: 4+0.5*(2+2+2)+0.5*(3+2+3)+5+2+2+2+2+4+2+5+3=38 cycles per LED v approx with no toggling - probably down to 35 with ticks_per_frame <= 4
 .led_loop
+if FALSE
+.SFTODOHANG99
+    bcc SFTODOHANG99
+endif
+    \ TIME: To hit 50fps consistently, I have 7.3 cycles per LED. Obviously that's not
+    \ possible.
 
     \ Decrement this LED's count and do nothing else if it's not yet zero.
     \ TODO: Relatively little code here touches carry; it may be possible to optimise away the sec/clc instructions here.
 .lda_count_x
     lda $ff00,x \ patched
-    sec
+    \ sec - we have arranged that carry is always set here already
+if ticks_per_frame > 4
     \ TODO: This bmi at the cost of 2/3 cycles per LED means we can use the full 8-bit range of
     \ the count. This is an experiment.
     bmi not_going_to_toggle
+endif
     sbc #ticks_per_frame
     bmi toggle_led
 .sta_count_x_1
     sta $ff00,x \ patched
-    advance_to_next_led
+.advance_to_next_led
+    inx:beq advance_to_next_led_group
+.return_from_advance_to_next_led_group
+    dey
+    beq next_line
+    lda SFTODOTABLE,y:bpl led_loop
+    inc screen_ptr:bne led_loop
+    inc screen_ptr+1:jmp led_loop
+.next_line
+    ldy #38*6
+    \ TODO: Since we probably know C is set, we could get rid of clc and adc#2 instead - but this code isn't executed that often, so not a huge win
+    clc:lda screen_ptr:adc #3:sta screen_ptr:bcc led_loop_sec
+    inc screen_ptr+1:jmp led_loop
+if ticks_per_frame > 4
 .not_going_to_toggle
     sbc #ticks_per_frame
-.sta_count_x_1b \ TODO: RENUMBER TO GET RID OF "b"
-    sta $ff00,x \ patched
-    advance_to_next_led
+    jmp sta_count_x_1
+endif
 
     \ Toggle this LED.
 .toggle_led
-    \ TIME: LED toggle is: 4+5+4+2+5+2+4+4+4+4+2+89+2+3=134 cycles, so ignoring any other overhead I can toggle 298 LEDs per frame
+if FALSE
+.SFTODOHANG44
+    bcs SFTODOHANG44
+endif
     \ This LED's count has gone negative; add the period.
-    clc
+    \ clc - we have arranged that carry is always clear here already
 .adc_period_x
     adc $ff00,x \ patched
 .sta_count_x_2
     sta $ff00,x \ patched
-    \ Toggle the LED's state.
-.lda_address_low_x_1 \ TODO: _1 suffix now redundant
-    lda $ff00,x \ patched
-    sta screen_ptr
-.lda_address_high_x_1 \ TODO: _1 suffix now redundant
-    lda $ff00,x \ patched
-    sta screen_ptr+1
-.lda_state_x
-    lda $ff00,x \ patched
-    eor #255
-.sta_state_x
-    sta $ff00,x \ patched
-.reset_toggle_byte_done
-    beq turn_led_off
 
-    \ Turn this LED on.
-    \ We could save a few cycles by only loading the accumulator once with the "top/bottom"
-    \ pixel pattern and saving it in the top and bottom rows at that point, but I think the
-    \ occasional tearing artefacts are less noticeable if we update in strictly increasing
-    \ order.
-if big_leds
-    lda #%00111100
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    lda #%01111110
-    iny:sta (screen_ptr),y
-    iny:sta (screen_ptr),y
-    iny:sta (screen_ptr),y
-    iny:sta (screen_ptr),y
-    lda #%00111100
-    iny:sta (screen_ptr),y
-else
-    lda #%00011000
-    ldy #0:sta (screen_ptr),y \ TODO: could use CMOS instruction here
-    lda #%00111100
-    iny:sta (screen_ptr),y
-    iny:sta (screen_ptr),y
-    lda #%00011000
-    iny:sta (screen_ptr),y
+    \ Toggle the LED's state in screen RAM.
+    lda SFTODOTABLE,y
+    \ TODO: Scope for using CMOS instructions to avoid needing Y=0
+    sty tmp_y
+    ldy #0:eor (screen_ptr),y:sta (screen_ptr),y
+    ldy tmp_y
+    jmp advance_to_next_led
+
+if FALSE \ SFTODO?!
+    \ If the raster is currently on this row, wait for it to pass.
+.lda_inverse_row_x
+    lda $ff00,x \ patched
+.raster_loop
+    cmp SFTODOTHING
+    beq raster_loop
 endif
-    advance_to_next_led
-
-.turn_led_off
-    \ Turn this LED off.
-    lda #0
-    for y, 0, led_max_line
-        \ TODO: Scope for using CMOS
-        if y == 0
-            ldy #0 \ TODO: tay would save one byte, but no faster and more obscure
-        else
-            iny
-        endif
-        sta (screen_ptr),y
-    next
-    advance_to_next_led_fall_through
 
 .advance_to_next_led_group
     \ X has wrapped around to 0, so advance all the addresses in the self-modifying
     \ code to the next page.
-    inc lda_count_x+2:inc sta_count_x_1+2:inc sta_count_x_1b+2:inc sta_count_x_2+2
+    inc lda_count_x+2:inc sta_count_x_1+2
+if FALSE
+    inc sta_count_x_1b+2
+endif
+    inc sta_count_x_2+2
     inc adc_period_x+2
-    inc lda_state_x+2:inc sta_state_x+2
-    inc lda_address_low_x_1+2
-    inc lda_address_high_x_1+2
+    \inc lda_inverse_row_x+2
     dec led_group_count:beq forever_loop_indirect
-    jmp led_loop
+    jmp return_from_advance_to_next_led_group
 .forever_loop_indirect
     jmp forever_loop
 
@@ -191,10 +194,9 @@ endif
     lda &fc:pha
     lda &fe4d:and #&02:beq return_to_os
     \ Handle VSYNC interrupt.
+    lda &fe41 \ SFTODO: clear this interrupt
     inc vsync_count
-if show_missed_vsync
-    lda #0 eor 7:sta &fe21
-endif
+    pla:sta &fc:rti \ SFTODO dont enter OS, hence clearing interrupt ourselves
 .return_to_os
     pla:sta &fc
 .^jmp_old_irq_handler
@@ -234,7 +236,7 @@ endif
 
 macro pequb x
     assert x >= 0 and x <= 255
-    equb x
+    equb int(x/4) \ SFTODO HACK BECAUSE WE CAN'T HIT CLOSE TO 50FPS
 endmacro
 
     align &100
@@ -271,23 +273,32 @@ endmacro
 
     HACKTODO=0
 
+if FALSE \ SFTODO
     align &100
-.address_low_table
-    for i, 0, led_count-1
-        equb lo(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
+.inverse_row_table
+    for i, 0, led_count - 1
+        equb 24 - (i div (40*6)
     next
+endif
 
     align &100
-.address_high_table
-    for i, 0, led_count-1
-        equb hi(&5800 + i*8 +HACKTODO*40*8 + led_start_line)
+.SFTODOTABLE
+    equb 0
+    for i, 1, 38*6
+        if (i - 1) mod 6 == 5
+            equb 128+64
+        else
+            equb 1 << ((i - 1) mod 6)
+        endif
     next
 
 .end
 
-    puttext "boot.txt", "!BOOT", 0
+    puttext "boot7.txt", "!BOOT", 0
     save "BLINKEN", start, end
 
 \ TODO: In mode 4 we potentially have enough RAM to double buffer the screen to avoid flicker
 
 \ TODO: I should keep on with the mode 4 version, but I should also do a mode 7 version using separated graphics - that should be super smooth as it's character based and I can easily toggle individual sixels=LEDs
+
+\ TODO: I should look into having the timer update (approximately; just sketching out a solution here) a "current line number" variable, and then before toggling an LED we would wait for the raster to pass if it's on our line or the line before - this would slow things down slightly, but we'd avoid any tearing
